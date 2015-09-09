@@ -6,7 +6,11 @@ use warnings;
 use ReseqTrack::Tools::Exception;
 use ReseqTrack::DBSQL::DBAdaptor;
 use ReseqTrack::Tools::RunMetaInfoUtils qw(create_index_line create_suppressed_index_line);
+<<<<<<< HEAD
 use ReseqTrack::Tools::SequenceIndexUtils qw(return_header_string return_header_desc assign_files);
+=======
+use ReseqTrack::Tools::SequenceIndexUtils qw(return_header_string assign_files);
+>>>>>>> 94828cc42c584719f5adc22e895d28b38d6143f9
 use ReseqTrack::Tools::FileSystemUtils qw(get_lines_from_file);
 use ReseqTrack::Tools::ERAUtils qw(get_erapro_conn);
 use ReseqTrack::Tools::RunSeqtk;
