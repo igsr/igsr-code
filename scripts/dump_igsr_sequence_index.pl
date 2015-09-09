@@ -6,11 +6,7 @@ use warnings;
 use ReseqTrack::Tools::Exception;
 use ReseqTrack::DBSQL::DBAdaptor;
 use ReseqTrack::Tools::RunMetaInfoUtils qw(create_index_line create_suppressed_index_line);
-<<<<<<< HEAD
 use ReseqTrack::Tools::SequenceIndexUtils qw(return_header_string return_header_desc assign_files);
-=======
-use ReseqTrack::Tools::SequenceIndexUtils qw(return_header_string assign_files);
->>>>>>> 94828cc42c584719f5adc22e895d28b38d6143f9
 use ReseqTrack::Tools::FileSystemUtils qw(get_lines_from_file);
 use ReseqTrack::Tools::ERAUtils qw(get_erapro_conn);
 use ReseqTrack::Tools::RunSeqtk;
@@ -188,7 +184,7 @@ META_INFO:foreach my $meta_info(@sorted){
 		       														#### If frag fastq file exists, the archive_read_count is the number of read pairs plus count of reads in the fragment file
 
 		       
-		       if($frag){
+		       if($frag && $meta_info->library_layout eq "PAIRED"){
 		         my ($frag_read_cnt, $frag_base_cnt) = count_fastq_by_seqtk($frag->name);  
 		         my $line = create_index_line($era_ftp_path_hash{$frag->name}, $frag->md5, $meta_info, undef, 0,
 		                                      undef, undef, $frag_read_cnt, $frag_base_cnt, 
@@ -197,6 +193,13 @@ META_INFO:foreach my $meta_info(@sorted){
 		         $read_count = $read_count - $frag_read_cnt;
 		         $base_count = $base_count - $frag_base_cnt;
 		       }
+		       elsif ($frag && $meta_info->library_layout eq "SINGLE"){
+		       		my $line = create_index_line($era_ftp_path_hash{$frag->name}, $frag->md5, $meta_info, undef, 0,
+		                                      undef, undef, $read_count, $base_count, 
+		                                      $analysis_group);                         
+		         	push(@{$index_lines{$meta_info->run_id}}, $line);
+		       }
+		       
 		       if($mate1 && $mate2){
 		          my $mate1_line = create_index_line($era_ftp_path_hash{$mate1->name}, $mate1->md5, $meta_info, 
 		                                             $era_ftp_path_hash{$mate2->name}, 0, undef, undef, 
