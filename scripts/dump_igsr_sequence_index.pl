@@ -5,10 +5,11 @@ use warnings;
 
 use ReseqTrack::Tools::Exception;
 use ReseqTrack::DBSQL::DBAdaptor;
-use ReseqTrack::Tools::RunMetaInfoUtils qw(create_index_line create_index_line);
-use ReseqTrack::Tools::SequenceIndexUtils qw(return_header_string assign_files);
+use ReseqTrack::Tools::RunMetaInfoUtils qw(create_index_line create_suppressed_index_line);
+use ReseqTrack::Tools::SequenceIndexUtils qw(return_header_string return_header_desc assign_files);
 use ReseqTrack::Tools::FileSystemUtils qw(get_lines_from_file);
 use ReseqTrack::Tools::ERAUtils qw(get_erapro_conn);
+use ReseqTrack::Tools::RunSeqtk;
 use File::Basename;
 use Getopt::Long;
 
@@ -29,6 +30,7 @@ my @skip_study_ids;
 my $current_index ;
 my @print_status;
 my $help;
+my $seqtk_program;
 
 my %current_hash;
 my %skip_study_id;
@@ -55,11 +57,14 @@ my %runs_pass_qa;
 	    'run_id=s' 				=> \$single_run_id,
 	    'current_index=s'     	=>\$current_index,
         'print_status=s'  		=> \@print_status,
+        'seqtk_program:s'		=> \$seqtk_program,
 	   );
 
 if($help){
   useage();
 }
+
+$seqtk_program = "/nfs/1000g-work/G1K/work/bin/seqtk/seqtk" if (!$seqtk_program);
 
 if (!@print_status) {
   push(@print_status, 'public');
@@ -105,45 +110,42 @@ throw("Cannot find any collection of type $collection_type") if (!$collections |
 
 #print "number of collection with type $collection_type is " . scalar @$collections . "\n";
 
-my $files = $db->get_FileAdaptor->fetch_by_type($file_type);
+### find fastq files of specified file type, populate file_hash and find fastq file ENA ftp path ####
 
-foreach my $file ( @$files ) {		
-	my ($run_id) = $file->filename =~ /([E|S]RR\d+)/;
-    #print "run_id from file name is $run_id\n";
-    push(@{$file_hash{$run_id}}, $file);
-}	
+my $files = $db->get_FileAdaptor->fetch_by_type($file_type);
 
 my $era_db = get_erapro_conn(@era_params);
 $era_db->dbc->db_handle->{LongReadLen} = $clob_read_length;
 my $info_sql = 'select file_name, dir_name, md5, volume_name, bytes from fastq_file where run_id = ?';
 my $era_sth = $era_db->dbc->prepare($info_sql);
 
-
-### for collections with appropriate type, find fastq files associated with these collections, find fastq file ENA ftp path ####
+foreach my $file ( @$files ) {		
+	my ($run_id) = $file->filename =~ /([E|S]RR\d+)/;
+    #print "run_id from file name is $run_id\n";
+    push(@{$file_hash{$run_id}}, $file);
+    
+    $era_sth->execute($run_id);
+    while(my $hashref = $era_sth->fetchrow_hashref){
+    	my $era_filename = $hashref->{DIR_NAME}."/".$hashref->{FILE_NAME};
+      	my $era_md5 = $hashref->{MD5};
+      	if (basename($era_filename) eq basename($file->name) && $era_md5 eq $file->md5) {
+      	    #print "hash key is " . $good_file->name . "\n";
+      	    #print "ENA base name " . basename($era_filename) . " " . $era_md5 . " db basename " . basename($good_file->name) . " " . $good_file->md5 . "\n";
+        	$era_ftp_path_hash{$file->name} =  "ftp://ftp.sra.ebi.ac.uk/vol1/". $era_filename;	
+    	}
+  	}    
+}	
 
 foreach my $collection ( @$collections ) {
 	$runs_pass_qa{$collection->name} = 1; 
-	
-	my $col_files = $collection->others;
-	foreach my $good_file ( @$col_files ) {  
-    	$era_sth->execute($collection->name);
-    	while(my $hashref = $era_sth->fetchrow_hashref){
-      		my $era_filename = $hashref->{DIR_NAME}."/".$hashref->{FILE_NAME};
-      		my $era_md5 = $hashref->{MD5};
-      		if (basename($era_filename) eq basename($good_file->name) && $era_md5 eq $good_file->md5) {
-      		    #print "hash key is " . $good_file->name . "\n";
-      		    #print "ENA base name " . basename($era_filename) . " " . $era_md5 . " db basename " . basename($good_file->name) . " " . $good_file->md5 . "\n";
-        		$era_ftp_path_hash{$good_file->name} =  "ftp://ftp.sra.ebi.ac.uk/vol1/". $era_filename;	
-    		}
-  		}
-	}
 }	
 
 META_INFO:foreach my $meta_info(@sorted){
 	#print "Have ".$meta_info->run_id."\n";
 	my $analysis_group = $meta_info->library_strategy; 
-
-   if(keys(%skip_study_id)){
+	
+	#next if ($analysis_group eq "RNA-Seq");
+	if(keys(%skip_study_id)){
      next META_INFO if($skip_study_id{$meta_info->study_id});
    }
 
@@ -170,23 +172,26 @@ META_INFO:foreach my $meta_info(@sorted){
 	        push(@{$index_lines{$meta_info->run_id}}, $line);
 		}
 		else{
-	       
+	       print STDERR "Have ".@$files." for ".$meta_info->run_id."\n";
+		   my ($mate1, $mate2, $frag) = assign_files($files);   
+		   print STDERR "Mate 1 ".$mate1->name."\n" if($mate1);
+		   print STDERR "Mate 2 ".$mate2->name."\n" if($mate2);
+		   print STDERR "Frag ".$frag->name."\n" if($frag);
 	       if ($runs_pass_qa{$meta_info->run_id}) { 
-				print STDERR "Have ".@$files." for ".$meta_info->run_id."\n";
-		       	my ($mate1, $mate2, $frag) = assign_files($files);   
-		       	print STDERR "Mate 1 ".$mate1->name."\n" if($mate1);
-		       	print STDERR "Mate 2 ".$mate2->name."\n" if($mate2);
-		       	print STDERR "Frag ".$frag->name."\n" if($frag);
 		       
 		       	my $read_count = $meta_info->archive_read_count;
-		       	my $base_count = $meta_info->archive_base_count;  	#### In run_meta_info_vw table, the archive_read_count and archive_base_count are for the run, not for individual fastq files;
-		       														##### So the counts report in the seq index file are run level counts, not file level counts
+		       	my $base_count = $meta_info->archive_base_count;  	#### In run_meta_info_vw table, the archive_read_count and archive_base_count are for individual fastq files if no frag fragment exist;
+		       														#### If frag fastq file exists, the archive_read_count is the number of read pairs plus count of reads in the fragment file
+
 		       
 		       if($frag){
+		         my ($frag_read_cnt, $frag_base_cnt) = count_fastq_by_seqtk($frag->name);  
 		         my $line = create_index_line($era_ftp_path_hash{$frag->name}, $frag->md5, $meta_info, undef, 0,
-		                                      undef, undef, $read_count, $base_count, 
-		                                      $analysis_group);
+		                                      undef, undef, $frag_read_cnt, $frag_base_cnt, 
+		                                      $analysis_group);                         
 		         push(@{$index_lines{$meta_info->run_id}}, $line);
+		         $read_count = $read_count - $frag_read_cnt;
+		         $base_count = $base_count - $frag_base_cnt;
 		       }
 		       if($mate1 && $mate2){
 		          my $mate1_line = create_index_line($era_ftp_path_hash{$mate1->name}, $mate1->md5, $meta_info, 
@@ -206,15 +211,37 @@ META_INFO:foreach my $meta_info(@sorted){
 				
 			}
 			else {	
-	        	my $new_comment = "TOO SHORT OR NON-ILLUMINA";
+				my $colls = $db->get_CollectionAdaptor->fetch_by_name($meta_info->run_id);
+
+	        	my $new_comment;				
+				foreach my $coll ( @$colls ) {
+					next if ($coll->type =~ /FASTQ/i);
+					next if $coll->type =~ /FQ_OK/;
+					$new_comment = $coll->type;
+				}	 
+
 	       		my $time = "";
-	       	
-	       		if (defined $current_hash{$meta_info->run_id}{withdrawn}){
+	       
+	     		my $md5 = "................................";
+	     		
+	     		if ($frag) {
+	     		    print "Failed QA frag " . $era_ftp_path_hash{$frag->name} ."\n";
+		     		my $line = create_index_line($era_ftp_path_hash{$frag->name}, $md5, $meta_info,, undef, 1, $new_comment, $time, undef, undef, $analysis_group);
+	     			push(@{$index_lines{$meta_info->run_id}}, $line);
+	     		}
+	     		if($mate1 && $mate2){	
+	     		    print "Failed QA mate 1 " . $era_ftp_path_hash{$mate1->name} . "\n";
+	     		    my $line1 = create_index_line($era_ftp_path_hash{$mate1->name}, $md5, $meta_info,, undef, 1, $new_comment, $time, undef, undef, $analysis_group);
+	     		    my $line2 = create_index_line($era_ftp_path_hash{$mate2->name}, $md5, $meta_info,, undef, 1, $new_comment, $time, undef, undef, $analysis_group);
+	     			push(@{$index_lines{$meta_info->run_id}}, $line1);
+	     			push(@{$index_lines{$meta_info->run_id}}, $line2);
+	     		}
+	     		
+	     		if (defined $current_hash{$meta_info->run_id}{withdrawn}){
 	       			print STDERR "Current index has it withdrawn as well: " . $meta_info->run_id, "\t",$current_hash{$meta_info->run_id}{comment},"\n";  
 	     		}
-	     	
-     			my $line = create_suppressed_index_line($meta_info, $new_comment, $time, $analysis_group);
-     			push(@{$index_lines{$meta_info->run_id}}, $line);
+     			#my $line = create_suppressed_index_line($meta_info, $new_comment, $time, $analysis_group);
+     			#push(@{$index_lines{$meta_info->run_id}}, $line);
 	     		#print "run didn't pass QA\n";
 	     	}
 	    }	     
@@ -233,6 +260,38 @@ if($output_file){
   $fh = \*FH;
 }
 
+print $fh return_header_desc();
+
+=head"##Date=
+##Project=The 1000 Genomes Project
+##FASTQ_ENA_PATH=an ENA ftp path from which the FASTQ file can be downloaded
+##MD5=md5 for the fastq file
+##RUN_ID=ENA/SRA assigned accession for the run
+##STUDY_ID=ENA/SRA assigned accession for the study
+##STUDY_NAME=name of the study
+##CENTER_NAME=sequencing center that produced and submitted the sequence data
+##SUBMISSION_ID=ENA/SRA assigned accession for the submission
+##SUBMISSION_DATE=date of the data was submitted to ENA/SRA
+##SAMPLE_ID=ENA/SRA assigned accession for the sample
+##SAMPLE_NAME=sample identifier given by Coriell
+##POPULATION=three letter population code for the sample
+##EXPERIMENT_ID=ENA/SRA assigned accession for the experiment
+##INSTRUMENT_PLATFORM=type of sequencing machine used in the experiment
+##INSTRUMENT_MODEL=model of the sequencing machine used in the experiment
+##LIBRARY_NAME=identifier for the library
+##RUN_NAME=run name assigned by the sequencing machine
+##INSERT_SIZE=submitter specified insert size of the library
+##LIBRARY_LAYOUT=Library layout, this can be either PAIRED or SINGLE
+##PAIRED_FASTQ=Name of mate pair file if exists
+##WITHDRAWN=0/1 to indicate if the file has been withdrawn, only present if a file has been withdrawn
+##WITHDRAWN_DATE=this is generally the date the index file is generated on
+##COMMENT=comment about reasons for withdrawing from variant calling. \"TOO SHORT\" means reads are shorter than 70bp for WGS data or less than 68bp for WXS data; \"NOT_ILLUMINA\" are data produced on platformats other than Illumina; \"SUPPRESSED IN ARCHIVE\" are runs that are no longer available from ENA/SRA
+##READ_COUNT=number of reads in the fastq file
+##BASE_COUNT=number of bases in the fastq file
+##ANALYSIS_GROUP=the analysis group of the sequence, this reflects sequencing strategy. Currently this includes low coverage whole genome sequence (WGS), 
+exome sequence (WXS), high coverage whole genome sequence (HC_WGS)";
+=cut
+
 my $header = return_header_string(); 
 print $fh $header;
 foreach my $meta_info(@sorted){
@@ -247,6 +306,37 @@ foreach my $meta_info(@sorted){
 }
 close($fh);
 
+##### SUBS #####
+sub count_fastq_by_seqtk {
+	my ($input) = @_;
+	my $output_dir = "/tmp";
+	#create RunSeqtk object
+	my $run_seqtk_fqchk = ReseqTrack::Tools::RunSeqtk->new
+  	(
+		-input_files => [$input],
+		-program => $seqtk_program,
+		-working_dir => $output_dir,
+	);
+
+	$run_seqtk_fqchk->run_fqchk;
+	my $outs = $run_seqtk_fqchk->output_files;
+
+	foreach my $out ( @$outs ) {
+
+        my $lines = get_lines_from_file($out);
+
+        my ($min_len_tmp, $max_len_tmp, $avg_len_tmp) = split(/;/, $lines->[0]);
+        my ($name1, $min_len) = split(/: /, $min_len_tmp);
+        my ($name2, $max_len) = split(/: /, $max_len_tmp);
+        my ($name3, $avg_len) = split(/: /, $avg_len_tmp);
+
+        my ($tmp, $total_bases) = split(/\t/, $lines->[2]);
+
+        my $total_reads = $total_bases/$avg_len;
+        print "By seqtk: read cnt is $total_reads\n";
+        return ($total_reads, $total_bases);
+	}
+}	     
 
 =pod
 
