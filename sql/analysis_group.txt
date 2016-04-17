@@ -12,4 +12,5 @@ sv_smrt	Single molecule real time (SMRT)
 illumina_platinum_ped	Illumina platinum pedigree
 cg	Complete Genomics
 pilot_data	Pilot study data
-release	Release
+integrated_calls	Integrated variant call sets
+hd_genotype_chip	HD genotype chip
