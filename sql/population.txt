@@ -1,0 +1,27 @@
+1	CHB	Han Chinese	Han Chinese in Beijing, China
+1	JPT	Japanese	Japanese in Tokyo, Japan
+1	CHS	Southern Han Chinese	Han Chinese South
+1	CDX	Dai Chinese	Chinese Dai in Xishuangbanna, China
+1	KHV	Kinh Vietnamese	Kinh in Ho Chi Minh City, Vietnam
+1	CHD	Denver Chinese	Chinese in Denver, Colorado
+2	CEU	CEPH	Utah residents (CEPH) with Northern and Western European ancestry
+2	TSI	Tuscan	Toscani in Italy
+2	GBR	British	British in England and Scotland
+2	FIN	Finnish	Finnish in Finland
+2	IBS	Spanish	Iberian populations in Spain
+3	YRI	Yoruba	Yoruba in Ibadan, Nigeria
+3	LWK	Luhya	Luhya in Webuye, Kenya
+3	GWD	Gambian	Gambian in Western Division, The Gambia
+3	MSL	Mende	Mende in Sierra Leone
+3	ESN	Esan	Esan in Nigeria
+3	ASW	African-American SW	African Ancestry in Southwest US
+3	ACB	African-Caribbean	African Caribbean in Barbados
+4	MXL	Mexican-American	Mexican Ancestry in Los Angeles, California
+4	PUR	Puerto Rican	Puerto Rican in Puerto Rico
+4	CLM	Colombian	Colombian in Medellin, Colombia
+4	PEL	Peruvian	Peruvian in Lima, Peru
+5	GIH	Gujarati	Gujarati Indian in Houston, TX
+5	PJL	Punjabi	Punjabi in Lahore, Pakistan
+5	BEB	Bengali	Bengali in Bangladesh
+5	STU	Sri Lankan	Sri Lankan Tamil in the UK
+5	ITU	Indian	Indian Telugu in the UK

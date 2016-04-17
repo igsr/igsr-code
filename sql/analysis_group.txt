@@ -1,0 +1,15 @@
+exome	Exome
+exon_targetted	Targetted exon
+high_coverage	High coverage WGS
+low_coverage	Low coverage WGS
+strand_specific_rna	Strand specific RNA-seq
+3.5kb_jump	3.5kb jumping library
+HiC	HiC
+pcr_free_high	PCR-free high coverage
+strand-seq	Strand-seq
+sv_7kb_mate	7kb mate pair libray
+sv_smrt	Single molecule real time (SMRT)
+illumina_platinum_ped	Illumina platinum pedigree
+cg	Complete Genomics
+pilot_data	Pilot study data
+release	Release

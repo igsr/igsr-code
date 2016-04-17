@@ -1,0 +1,5 @@
+1	EAS	East Asian
+2	EUR	European
+3	FR	African
+4	MR	American
+5	AS	South Asian
