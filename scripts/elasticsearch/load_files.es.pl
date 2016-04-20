@@ -7,7 +7,7 @@ use Search::Elasticsearch;
 use DBI;
 use File::stat;
 
-my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1kro', 4197, undef);
+my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
 my $current_tree = '/nfs/1000g-archive/vol1/ftp/current.tree';
 my $root = 'ftp://ftp.1000genomes.ebi.ac.uk/vol1/';
 my $check_timestamp;
@@ -28,11 +28,11 @@ my @es = map {Search::Elasticsearch->new(nodes => $_, client => '1_0::Direct')} 
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
 my $select_file_sql = 'SELECT f.file_id, f.url, f.url_crc, dt.code data_type, ag.description analysis_group
-    FROM file f LEFT JOIN data_type dt ON f.datatype_id = dt.data_type_id
+    FROM file f LEFT JOIN data_type dt ON f.data_type_id = dt.data_type_id
     LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id
     WHERE f.url_crc=crc32(?) AND f.url=?';
 my $select_all_files_sql = 'SELECT f.file_id, f.url, f.url_crc, f.md5, dt.code data_type, ag.description analysis_group
-    FROM file f LEFT JOIN data_type dt ON f.datatype_id = dt.data_type_id
+    FROM file f LEFT JOIN data_type dt ON f.data_type_id = dt.data_type_id
     LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id';
 my $select_sample_sql = 'SELECT s.name from sample s, sample_file sf
     WHERE sf.sample_id=s.sample_id AND sf.file_id=?';
@@ -53,7 +53,7 @@ if ($check_timestamp) {
   my $rows = $sth_timestamp->fetchall_arrayref();
   exit if @$rows;
 }
-my $log_sql = 'INSERT INTO LOG(current_tree_mtime, start_run_time) VALUES (?, now())';
+my $log_sql = 'INSERT INTO log(current_tree_mtime, start_run_time) VALUES (?, now())';
 my $sth_log = $dbh->prepare($log_sql) or die $dbh->errstr;
 $sth_log->bind_param(1, $st->mtime);
 $sth_log->execute() or die $sth_log->errstr;
@@ -76,7 +76,7 @@ while (my $line = <$fh>) {
   die "found more than one matching file for $url" if @$file_rows >1;
 
   $processed_files{$file_rows->[0]{file_id}} = 1;
-  add_file($file_rows->[0], $split_line[5]);
+  add_file($file_rows->[0], $split_line[4]);
 }
 close $fh;
 
@@ -112,7 +112,7 @@ sub add_file {
   $sth_data_collection->bind_param(1, $file_mysql_row->{file_id});
   $sth_data_collection->execute() or die $sth_data_collection->errstr;
   while (my $row = $sth_data_collection->fetchrow_hashref()) {
-    $es_doc{dataReusePolicy} //= $row->{data_reuse_policy};
+    $es_doc{dataReusePolicy} //= $row->{reuse_policy};
     push(@{$es_doc{dataCollections}}, $row->{description});
   }
 
