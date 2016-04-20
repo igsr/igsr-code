@@ -46,14 +46,14 @@ my $sth_data_collection = $dbh->prepare($select_data_collection_sql) or die $dbh
 
 my $st = stat($current_tree) or die "could not stat $current_tree $!";
 if ($check_timestamp) {
-  my $timestamp_sql = 'SELECT count(*) FROM log WHERE current_tree_mtime = ?';
+  my $timestamp_sql = 'SELECT count(*) FROM log WHERE current_tree_mtime = FROM_UNIXTIME(?) AND complete_run_time IS NOT NULL';
   my $sth_timestamp = $dbh->prepare($timestamp_sql) or die $dbh->errstr;
   $sth_timestamp->bind_param(1, $st->mtime);
   $sth_timestamp->execute() or die $sth_timestamp->errstr;
   my $rows = $sth_timestamp->fetchall_arrayref();
   exit if @$rows;
 }
-my $log_sql = 'INSERT INTO log(current_tree_mtime, start_run_time) VALUES (?, now())';
+my $log_sql = 'INSERT INTO log(current_tree_mtime, start_run_time) VALUES (FROM_UNIXTIME(?), now())';
 my $sth_log = $dbh->prepare($log_sql) or die $dbh->errstr;
 $sth_log->bind_param(1, $st->mtime);
 $sth_log->execute() or die $sth_log->errstr;
