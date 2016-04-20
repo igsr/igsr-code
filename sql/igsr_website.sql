@@ -29,6 +29,7 @@ CREATE TABLE data_collection (
   code VARCHAR(255) NOT NULL,
   description VARCHAR(256) NOT NULL,
   reuse_policy VARCHAR(256),
+  reuse_policy_precedence TINYINT UNSIGNED,
   UNIQUE(code)
 );
 

@@ -19,6 +19,7 @@ my $root = '';
   'file|index_file=s'      => \$index_file,
   'data_collection=s' => \$data_collection,
   'data_type=s' => \$data_type,
+  'analysis_group=s' => \$analysis_group,
   'root=s'        => \$root,
   'dbpass=s'      => \$dbpass,
   'dbport=i'      => \$dbport,
@@ -39,7 +40,9 @@ die "did not get url column on command line" if ! scalar @url_column;
 die "need one md5 column for each url column" if @md5_column && (scalar @url_column != scalar @md5_column);
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
-my $insert_file_sql = 'INSERT INTO file(url, url_crc, md5) VALUES(?, crc32(?), ?) ON DUPLICATE KEY UPDATE file_id=LAST_INSERT_ID(file_id)';
+$dbh->{AutoCommit} = 0;
+#my $insert_file_sql = 'INSERT INTO file(url, url_crc, md5) VALUES(?, crc32(?), ?) ON DUPLICATE KEY UPDATE file_id=LAST_INSERT_ID(file_id)';
+my $insert_file_sql = 'INSERT INTO file(url, url_crc, md5) SELECT f2.url, crc32(f2.url), f2.md5 FROM (SELECT ? AS url, ? AS md5 ) AS f2 ON DUPLICATE KEY UPDATE file_id=LAST_INSERT_ID(file_id)';
 my $update_type_sql = 'UPDATE file SET data_type_id=(SELECT data_type_id FROM data_type WHERE code=?) WHERE file_id=?';
 my $update_analysis_group_sql = 'UPDATE file SET analysis_group_id=(SELECT analysis_group_id FROM analysis_group WHERE code=?) WHERE file_id=?';
 my $insert_data_collection_sql = 'INSERT IGNORE INTO file_data_collection(file_id, data_collection_id) SELECT ?, data_collection_id from data_collection where code=?';
@@ -65,8 +68,8 @@ if ($use_column_headers) {
     foreach my $i (0..$#split_line) {
       $cols{uc($split_line[$i])} = $i;
     }
-    @i_url = map {$cols{$_}} @url_column;
-    @i_md5 = map {$cols{$_}} @md5_column;
+    @i_url = map {$cols{uc($_)}} @url_column;
+    @i_md5 = map {$cols{uc($_)}} @md5_column;
     $i_analysis_group = $analysis_group_column ? $cols{$analysis_group_column} : undef;
     $i_withdrawn = $withdrawn_column ? $cols{$withdrawn_column} : undef;
     $i_sample = $sample_column ? $cols{$sample_column} : undef;
@@ -82,6 +85,7 @@ else {
 die "do not know column of url" if grep {!defined $_} @i_url;
 die "do not know column of md5" if grep {!defined $_} @i_md5;
 
+
 LINE:
 while (my $line = <$fh>) {
   chomp $line;
@@ -90,9 +94,12 @@ while (my $line = <$fh>) {
   foreach my $j (0..$#i_url) {
     my ($i_url, $i_md5) = ($i_url[$j], $i_md5[$j]);
     my $url = $root.$split_line[$i_url];
+
+    #temporary line until index files are fixed:
+    $url =~ s{ftp:/ftp}{ftp://ftp};
+
     $sth_file->bind_param(1, $url);
-    $sth_file->bind_param(2, $url);
-    $sth_file->bind_param(3, defined $i_md5 ? $split_line[$i_md5] : undef);
+    $sth_file->bind_param(2, defined $i_md5 ? $split_line[$i_md5] : undef);
     $sth_file->execute() or die $sth_file->errstr;
     my $file_id = $sth_file->{mysql_insertid};
 
@@ -128,3 +135,4 @@ while (my $line = <$fh>) {
   }
 }
 close $fh;
+$dbh->commit;

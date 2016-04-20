@@ -3,6 +3,7 @@
 perl load_vcf_file.mysql.pl \
   -data_collection phase3 \
   -dbpass $RESEQTRACK_PASS \
+  -analysis_group integrated_calls \
   -file /nfs/1000g-archive/vol1/ftp/release/20130502/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz \
   -file /nfs/1000g-archive/vol1/ftp/release/20130502/ALL.chr11.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz \
   -file /nfs/1000g-archive/vol1/ftp/release/20130502/ALL.chr12.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz \
@@ -26,12 +27,13 @@ perl load_vcf_file.mysql.pl \
   -file /nfs/1000g-archive/vol1/ftp/release/20130502/ALL.chr8.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz \
   -file /nfs/1000g-archive/vol1/ftp/release/20130502/ALL.chr9.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz \
   -file /nfs/1000g-archive/vol1/ftp/release/20130502/ALL.chrMT.phase3_callmom.20130502.genotypes.vcf.gz \
-  -file /nfs/1000g-archive/vol1/ftp/release/20130502/ALL.chrX.phase3_shapeit2_mvncall_integrated_v1b.20130502.genotypes.vcf.gz
+  -file /nfs/1000g-archive/vol1/ftp/release/20130502/ALL.chrX.phase3_shapeit2_mvncall_integrated_v1b.20130502.genotypes.vcf.gz \
   -file /nfs/1000g-archive/vol1/ftp/release/20130502/ALL.chrY.phase3_integrated_v2a.20130502.genotypes.vcf.gz
 
 perl load_vcf_file.mysql.pl \
   -data_collection phase1 \
   -dbpass $RESEQTRACK_PASS \
+  -analysis_group integrated_calls \
   -file /nfs/1000g-archive/vol1/ftp/phase1/analysis_results/integrated_call_sets/ALL.chr10.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz \
   -file /nfs/1000g-archive/vol1/ftp/phase1/analysis_results/integrated_call_sets/ALL.chr11.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz \
   -file /nfs/1000g-archive/vol1/ftp/phase1/analysis_results/integrated_call_sets/ALL.chr12.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz \

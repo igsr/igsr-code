@@ -122,11 +122,11 @@ perl load_index_file.mysql.pl \
   -data_collection illumina_platinum_ped \
   -data_type alignment \
   -use_column_headers \
-  -url_column CRAM \
+  -url_column CRAM_FILE \
   -md5_column CRAM_MD5 \
-  -url_column CRAI \
+  -url_column CRAI_FILE \
   -md5_column CRAI_MD5 \
-  -url_column BAS \
+  -url_column BAS_FILE \
   -md5_column BAS_MD5 \
   -infer_sample \
   -analysis_group illumina_platinum_ped \
@@ -237,7 +237,7 @@ perl load_index_file.mysql.pl \
   -md5_column 1 \
   -sample_column 9 \
   -withdrawn_column 20 \
-  -analysis_group_column pilot_data \
+  -analysis_group pilot_data \
   -root ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/pilot_data/ \
   -dbpass $RESEQTRACK_PASS
 
@@ -252,6 +252,6 @@ perl load_index_file.mysql.pl \
   -url_column 6 \
   -md5_column 7 \
   -sample_column 3 \
-  -analysis_group_column pilot_data \
+  -analysis_group pilot_data \
   -root ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/pilot_data/ \
   -dbpass $RESEQTRACK_PASS

@@ -28,7 +28,10 @@ foreach my $biosample (@{BioSD::fetch_group($biosample_group)->samples}) {
 }
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
-my $insert_sql = 'INSERT INTO sample(name, biosample_id, population_id, sex) SELECT ?, ?, population_id, ? FROM population WHERE code=?';
+my $insert_sql = 'INSERT INTO sample (name, biosample_id, population_id, sex)
+  SELECT name, b_id, pop, sex FROM
+    (SELECT ? AS name, ? AS b_id, population_id AS pop, ? AS sex FROM population where code=?) AS s2
+  ON DUPLICATE KEY UPDATE biosample_id=s2.b_id, population_id=pop, sex=s2.sex';
 my $sth = $dbh->prepare($insert_sql) or die $dbh->errstr;
 
 
@@ -38,12 +41,12 @@ $sample_fh->delimiter("\t");
 $sample_fh->open($sample_file) or die "could not open $sample_file $!";
 while( my $line = $sample_fh->read) {
   my $biosample = $biosamples{$line->{Sample}};
+  my $sex = $line->{Gender} ? uc(substr($line->{Gender}, 0, 1)) : undef;
   $sth->bind_param(1, $line->{Sample});
   $sth->bind_param(2, $biosample->id);
-  $sth->bind_param(3, $line->{Sex});
+  $sth->bind_param(3, $sex);
   $sth->bind_param(4, $line->{Population});
   my $rv = $sth->execute() or die $sth->errstr;
-  die "did not recognise population ".$line->{Population} if $rv !=1;
 }
   
 $sample_fh->close();

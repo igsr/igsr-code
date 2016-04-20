@@ -5,10 +5,12 @@ use warnings;
 use Getopt::Long;
 use Search::Elasticsearch;
 use DBI;
+use File::stat;
 
 my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1kro', 4197, undef);
 my $current_tree = '/nfs/1000g-archive/vol1/ftp/current.tree';
 my $root = 'ftp://ftp.1000genomes.ebi.ac.uk/vol1/';
+my $check_timestamp;
 my @es_host;
 
 &GetOptions(
@@ -19,26 +21,44 @@ my @es_host;
   'dbuser=s'      => \$dbuser,
   'dbhost=s'      => \$dbhost,
   'dbname=s'      => \$dbname,
+  'check_timestamp=s' => \$check_timestamp,
   'es_host=s' =>\@es_host,
 );
 my @es = map {Search::Elasticsearch->new(nodes => $_, client => '1_0::Direct')} @es_host;
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
 my $select_file_sql = 'SELECT f.file_id, f.url, f.url_crc, dt.code data_type, ag.description analysis_group
-    FROM file f, data_type dt, analysis_group ag
-    WHERE f.data_type_id=dt.data_type_id AND f.analysis_group_id=ag.analysis_group_id
-    AND f.url_crc=crc32(?) AND f.url=?';
+    FROM file f LEFT JOIN data_type dt ON f.datatype_id = dt.data_type_id
+    LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id
+    WHERE f.url_crc=crc32(?) AND f.url=?';
 my $select_all_files_sql = 'SELECT f.file_id, f.url, f.url_crc, f.md5, dt.code data_type, ag.description analysis_group
-    FROM file f, data_type dt, analysis_group ag
-    WHERE f.data_type_id=dt.data_type_id AND f.analysis_group_id=ag.analysis_group_id';
+    FROM file f LEFT JOIN data_type dt ON f.datatype_id = dt.data_type_id
+    LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id';
 my $select_sample_sql = 'SELECT s.name from sample s, sample_file sf
     WHERE sf.sample_id=s.sample_id AND sf.file_id=?';
-my $select_data_collection_sql = 'SELECT dc.description from data_collection dc, file_data_collection fdc
-    WHERE fdc.data_collection_id=dc.data_collection_id AND fdc.file_id=?';
+my $select_data_collection_sql = 'SELECT dc.description, dc.reuse_policy from data_collection dc, file_data_collection fdc
+    WHERE fdc.data_collection_id=dc.data_collection_id AND fdc.file_id=?
+    ORDER BY dc.reuse_policy_precedence';
 my $sth_file = $dbh->prepare($select_file_sql) or die $dbh->errstr;
 my $sth_all_files = $dbh->prepare($select_all_files_sql) or die $dbh->errstr;
 my $sth_sample = $dbh->prepare($select_sample_sql) or die $dbh->errstr;
 my $sth_data_collection = $dbh->prepare($select_data_collection_sql) or die $dbh->errstr;
+
+my $st = stat($current_tree) or die "could not stat $current_tree $!";
+if ($check_timestamp) {
+  my $timestamp_sql = 'SELECT count(*) FROM log WHERE current_tree_mtime = ?';
+  my $sth_timestamp = $dbh->prepare($timestamp_sql) or die $dbh->errstr;
+  $sth_timestamp->bind_param(1, $st->mtime);
+  $sth_timestamp->execute() or die $sth_timestamp->errstr;
+  my $rows = $sth_timestamp->fetchall_arrayref();
+  exit if @$rows;
+}
+my $log_sql = 'INSERT INTO LOG(current_tree_mtime, start_run_time) VALUES (?, now())';
+my $sth_log = $dbh->prepare($log_sql) or die $dbh->errstr;
+$sth_log->bind_param(1, $st->mtime);
+$sth_log->execute() or die $sth_log->errstr;
+my $log_id = $sth_log->{mysql_insertid};
+
 
 my %processed_files;
 open my $fh, '<', $current_tree or die "could not open current_tree $!";
@@ -67,6 +87,13 @@ while (my $row = $sth_all_files->fetchrow_hashref()) {
   add_file($row);
 }
 
+
+$log_sql = 'UPDATE log SET complete_run_time=now() WHERE log_id=?';
+$sth_log = $dbh->prepare($log_sql) or die $dbh->errstr;
+$sth_log->bind_param(1, $log_id);
+$sth_log->execute() or die $sth_log->errstr;
+
+
 sub add_file {
   my ($file_mysql_row, $md5) = @_;
   my %es_doc = (
@@ -85,6 +112,7 @@ sub add_file {
   $sth_data_collection->bind_param(1, $file_mysql_row->{file_id});
   $sth_data_collection->execute() or die $sth_data_collection->errstr;
   while (my $row = $sth_data_collection->fetchrow_hashref()) {
+    $es_doc{dataReusePolicy} //= $row->{data_reuse_policy};
     push(@{$es_doc{dataCollections}}, $row->{description});
   }
 

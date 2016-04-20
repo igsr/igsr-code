@@ -1,6 +1,6 @@
-1000genomes	The 1000 Genomes Project	http://www.1000genomes.org/about#g1k_data_reuse
-hgsv_sv_discovery	The Human Genome Structural Variation Consortium	https://github.com/igsr/1000Genomes_data_indexes/blob/master/data_collections/hgsv_sv_discovery/README_hgsvc_datareuse_statement.md
-illumina_platinum_pedigree	Illumina Platinum pedigree	http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/illumina_platinum_pedigree/README_illumina_platinum_pedigree.md
-phase3	1000 Genomes phase 3 release	http://www.1000genomes.org/about#g1k_data_reuse
-phase1	1000 Genomes phase 1 release	http://www.1000genomes.org/about#g1k_data_reuse
-pilot	1000 pilot project	http://www.1000genomes.org/about#g1k_data_reuse
+1000genomes	The 1000 Genomes Project	http://www.1000genomes.org/about#g1k_data_reuse	1
+hgsv_sv_discovery	The Human Genome Structural Variation Consortium	https://github.com/igsr/1000Genomes_data_indexes/blob/master/data_collections/hgsv_sv_discovery/README_hgsvc_datareuse_statement.md	2
+illumina_platinum_pedigree	Illumina Platinum pedigree	http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/illumina_platinum_pedigree/README_illumina_platinum_pedigree.md	2
+phase3	1000 Genomes phase 3 release	http://www.1000genomes.org/about#g1k_data_reuse	1
+phase1	1000 Genomes phase 1 release	http://www.1000genomes.org/about#g1k_data_reuse	1
+pilot	1000 pilot project	http://www.1000genomes.org/about#g1k_data_reuse	1

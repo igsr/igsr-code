@@ -8,7 +8,7 @@ use DBI;
 my @vcf_file;
 my $data_collection = '1000genomes';
 my $data_type = 'variants';
-my $analysis_group = 'release';
+my $analysis_group;
 my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
 my $trim = '/nfs/1000g-archive/';
 my $root = 'ftp://ftp.1000genomes.ebi.ac.uk/';
@@ -28,7 +28,7 @@ my $root = 'ftp://ftp.1000genomes.ebi.ac.uk/';
 );
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
-my $insert_file_sql = 'INSERT INTO file(url, url_crc ) VALUES(?, crc32(?)) ON DUPLICATE KEY UPDATE file_id=LAST_INSERT_ID(file_id)';
+my $insert_file_sql = 'INSERT INTO file(url, url_crc ) SELECT f2.url, crc32(f2.url) FROM (SELECT ? AS url) f2 ON DUPLICATE KEY UPDATE file_id=LAST_INSERT_ID(file_id)';
 my $update_type_sql = 'UPDATE file SET data_type_id=(SELECT data_type_id FROM data_type WHERE code=?) WHERE file_id=?';
 my $update_analysis_group_sql = 'UPDATE file SET analysis_group_id=(SELECT analysis_group_id FROM analysis_group WHERE code=?) WHERE file_id=?';
 my $insert_data_collection_sql = 'INSERT IGNORE INTO file_data_collection(file_id, data_collection_id) SELECT ?, data_collection_id from data_collection where code=?';
@@ -39,6 +39,7 @@ my $sth_analysis_group = $dbh->prepare($update_analysis_group_sql) or die $dbh->
 my $sth_data_collection = $dbh->prepare($insert_data_collection_sql) or die $dbh->errstr;
 my $sth_sample = $dbh->prepare($insert_sample_sql) or die $dbh->errstr;
 
+$dbh->{AutoCommit} = 0;
 foreach my $vcf (@vcf_file) {
   my $vcf_header = `tabix -H $vcf | tail -1`;
   die "error opening $vcf" if !$vcf_header;
@@ -49,8 +50,7 @@ foreach my $vcf (@vcf_file) {
   $vcf =~ s/^$trim//;
   my $url = $root.$vcf;
   foreach my $file ($url, "$url.tbi") {
-    $sth_file->bind_param(1, $url);
-    $sth_file->bind_param(2, $url);
+    $sth_file->bind_param(1, $file);
     $sth_file->execute() or die $sth_file->errstr;
     my $file_id = $sth_file->{mysql_insertid};
 
@@ -79,3 +79,4 @@ foreach my $vcf (@vcf_file) {
     }
   }
 }
+$dbh->commit;

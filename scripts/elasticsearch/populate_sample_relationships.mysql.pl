@@ -20,8 +20,13 @@ my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdc
 );
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
-my $insert_sql = 'INSERT INTO sample_relationship(subject_sample_id, relation_sample_id, type) SELECT s1.sample_id, s2.sample_id, ? from sample s1, sample s2 where s1.name=? and s2.name=?';
+my $insert_sql = 'INSERT INTO sample_relationship(subject_sample_id, relation_sample_id, type)
+  SELECT subject_id, relation_id, type FROM
+    (SELECT s1.sample_id AS subject_id, s2.sample_id AS relation_id, ? AS type FROM sample s1, sample s2 WHERE s1.name=? AND s2.name=?) AS s3
+  ON DUPLICATE KEY UPDATE type=s3.type';
 my $sth = $dbh->prepare($insert_sql) or die $dbh->errstr;
+
+$dbh->{AutoCommit} = 0;
 
 my @second_orders;
 my @third_orders;
@@ -77,6 +82,8 @@ foreach my $relationship (@third_orders) {
   next THIRD_ORDER if $inserted_relationships{$relationship->[0]}{$relationship->[1]};
   insert_relationship(@$relationship, 'Third Order');
 }
+
+$dbh->commit;
 
 sub insert_relationship {
   my ($subject, $relation, $type) = @_;
