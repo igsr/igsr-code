@@ -25,11 +25,7 @@ my @es = map {Search::Elasticsearch->new(nodes => $_, client => '1_0::Direct')} 
 my @es_bulks = map {$_->bulk_helper(index => 'igsr', type => 'file')} @es;
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
-my $select_file_sql = 'SELECT f.file_id, f.url, dt.code data_type, ag.description analysis_group
-    FROM file f LEFT JOIN data_type dt ON f.data_type_id = dt.data_type_id
-    LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id
-    WHERE f.url_crc=crc32(?) AND f.url=?';
-my $select_all_files_sql = 'SELECT f.file_id, f.url_crc, f.url, f.md5, dt.code data_type, ag.description analysis_group
+my $select_all_files_sql = 'SELECT f.file_id, f.url, f.md5, f.foreign_file, f.in_current_tree,  dt.code data_type, ag.description analysis_group
     FROM file f LEFT JOIN data_type dt ON f.data_type_id = dt.data_type_id
     LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id
     ORDER BY file_id';
@@ -39,26 +35,19 @@ my $select_data_collection_sql = 'SELECT dc.description, dc.reuse_policy from da
     WHERE fdc.data_collection_id=dc.data_collection_id AND fdc.file_id=?
     ORDER BY dc.reuse_policy_precedence';
 my $insert_file_sql = 'INSERT INTO file(url, url_crc, md5, foreign_file) VALUES(?, ?, ?, ?)';
-my $sth_file = $dbh->prepare($select_file_sql) or die $dbh->errstr;
 my $sth_all_files = $dbh->prepare($select_all_files_sql) or die $dbh->errstr;
 my $sth_insert_file = $dbh->prepare($insert_file_sql) or die $dbh->errstr;
 my $sth_sample = $dbh->prepare($select_sample_sql) or die $dbh->errstr;
 my $sth_data_collection = $dbh->prepare($select_data_collection_sql) or die $dbh->errstr;
 
-my $st = stat($current_tree) or die "could not stat $current_tree $!";
-if ($check_timestamp) {
-  my $timestamp_sql = 'SELECT count(*) FROM log WHERE current_tree_mtime = FROM_UNIXTIME(?) AND complete_run_time IS NOT NULL';
-  my $sth_timestamp = $dbh->prepare($timestamp_sql) or die $dbh->errstr;
-  $sth_timestamp->bind_param(1, $st->mtime);
-  $sth_timestamp->execute() or die $sth_timestamp->errstr;
-  my $rows = $sth_timestamp->fetchall_arrayref();
-  exit if @$rows;
-}
-my $log_sql = 'INSERT INTO log(current_tree_mtime, start_run_time) VALUES (FROM_UNIXTIME(?), now())';
-my $sth_log = $dbh->prepare($log_sql) or die $dbh->errstr;
-$sth_log->bind_param(1, $st->mtime);
-$sth_log->execute() or die $sth_log->errstr;
-my $log_id = $sth_log->{mysql_insertid};
+my $timestamp_sql =
+   'SELECT current_tree_log_id, loaded_into_elasticsearch FROM current_tree_log
+    ORDER BY loaded_into_db DESC limit 1';
+my $sth_timestamp = $dbh->prepare($timestamp_sql) or die $dbh->errstr;
+$sth_timestamp->execute() or die $sth_timestamp->errstr;
+my $row_timestamp = $sth_timestamp->fetchrow_hashref();
+exit if $check_timestamp && (!$row_timestamp || $row_timestamp->{loaded_into_elasticsearch});
+my $current_tree_log_id = $row_timestamp ? $row_timestamp->{current_tree_log_id} : undef;
 
 foreach my $es (@es) {
   $es->indices->put_settings(
@@ -70,72 +59,38 @@ foreach my $es (@es) {
   );
 }
 
-my %current_tree;
-open my $fh, '<', $current_tree or die "could not open current_tree $!";
-LINE:
-while (my $line = <$fh>) {
-  my @split_line = split("\t", $line);
-  next LINE if $split_line[1] ne 'file';
-  chomp $line;
-  my $url = $root.$split_line[0];
-  $current_tree{crc32($url)}{$url}{md5}=$split_line[4];
-close $fh;
 
 $sth_all_files->execute() or die $sth_all_files->errstr;
 FILE:
-while (my $row = $sth_all_files->fetchrow_hashref()) {
-  next FILE if !$row->{foreign_file} && !$current_tree{$row->{url_crc}}{$row->{url}};
-  $current_tree{$row->{url_crc}}{$row->{url}}{processed} = 1;
-  add_file($row)
-}
+while (my $row_file = $sth_all_files->fetchrow_hashref()) {
+  next FILE if !($row->{foreign_file} || $row->{in_current_tree});
 
-while (my ($crc_url, $crc_url_hash) = each %current_tree) {
-  URL:
-  while (my ($url, $url_hash) = each %$crc_url_hash) {
-    next URL if $url_hash->{processed};
-    $sth_insert_file->bind_param(1, $url);
-    $sth_insert_file->bind_param(2, $crc_url);
-    $sth_insert_file->bind_param(3, $url_hash->{md5});
-    $sth_insert_file->bind_param(4, 0);
+  my %es_doc = (
+    url => $file_row->{url},
+    analysisGroup => $file_row->{analysis_group},
+    dataType => $file_row->{data_type},
+    md5 => $md5 // $file_row->{md5},
+  );
+
+  $sth_sample->bind_param(1, $file_row->{file_id});
+  $sth_sample->execute() or die $sth_sample->errstr;
+  while (my $row = $sth_sample->fetchrow_hashref()) {
+    push(@{$es_doc{samples}}, $row->{name});
   }
-  $sth_insert_file->execute() or die $sth_file->errstr;
-}
 
+  $sth_data_collection->bind_param(1, $file_row->{file_id});
+  $sth_data_collection->execute() or die $sth_data_collection->errstr;
+  while (my $row = $sth_data_collection->fetchrow_hashref()) {
+    $es_doc{dataReusePolicy} //= $row->{reuse_policy};
+    push(@{$es_doc{dataCollections}}, $row->{description});
+  }
 
-
-
-
-
-my %processed_files;
-open my $fh, '<', $current_tree or die "could not open current_tree $!";
-LINE:
-while (my $line = <$fh>) {
-  my @split_line = split("\t", $line);
-  next LINE if $split_line[1] ne 'file';
-  chomp $line;
-  my $url = $root.$split_line[0];
-
-  $sth_file->bind_param(1, $url);
-  $sth_file->bind_param(2, $url);
-  $sth_file->execute() or die $sth_file->errstr;
-  my $file_rows = $sth_file->fetchall_arrayref({});
-  next LINE if !@$file_rows;
-  die "found more than one matching file for $url" if @$file_rows >1;
-
-  $processed_files{$file_rows->[0]{file_id}} = 1;
-  add_file($file_rows->[0], $split_line[4]);
-}
-close $fh;
-
-$sth_all_files->execute() or die $sth_all_files->errstr;
-FILE:
-while (my $row = $sth_all_files->fetchrow_hashref()) {
-  next FILE if $processed_files{$row->{file_id}};
-  add_file($row);
-}
-
-foreach my $es_bulk (@es_bulks) {
-  $es_bulk->flush();
+  foreach my $es_bulk (@es_bulks) {
+    $es_bulk->index({
+      id => sprintf('%d', $file_row->{file_id}),
+      source => \%es_doc,
+    });
+  }
 }
 
 foreach my $es (@es) {
@@ -148,38 +103,14 @@ foreach my $es (@es) {
   );
 }
 
-$log_sql = 'UPDATE log SET complete_run_time=now() WHERE log_id=?';
-$sth_log = $dbh->prepare($log_sql) or die $dbh->errstr;
-$sth_log->bind_param(1, $log_id);
-$sth_log->execute() or die $sth_log->errstr;
+foreach my $es_bulk (@es_bulks) {
+  $es_bulk->flush();
+}
 
-
-sub add_file {
-  my ($file_mysql_row, $md5) = @_;
-  my %es_doc = (
-    url => $file_mysql_row->{url},
-    analysisGroup => $file_mysql_row->{analysis_group},
-    dataType => $file_mysql_row->{data_type},
-    md5 => $md5 // $file_mysql_row->{md5},
-  );
-
-  $sth_sample->bind_param(1, $file_mysql_row->{file_id});
-  $sth_sample->execute() or die $sth_sample->errstr;
-  while (my $row = $sth_sample->fetchrow_hashref()) {
-    push(@{$es_doc{samples}}, $row->{name});
-  }
-
-  $sth_data_collection->bind_param(1, $file_mysql_row->{file_id});
-  $sth_data_collection->execute() or die $sth_data_collection->errstr;
-  while (my $row = $sth_data_collection->fetchrow_hashref()) {
-    $es_doc{dataReusePolicy} //= $row->{reuse_policy};
-    push(@{$es_doc{dataCollections}}, $row->{description});
-  }
-
-  foreach my $es_bulk (@es_bulks) {
-    $es_bulk->index({
-      #id => $file_mysql_row->{url_crc} || crc32($file_mysql_row->{url}),
-      source => \%es_doc,
-    });
-  }
+if ($current_tree_log_id) {
+    my $log_sql = 'INSERT INTO log(current_tree_mtime, start_run_time) VALUES (FROM_UNIXTIME(?), now())';
+    my $log_sql = 'UPDATE current_tree_log SET loaded_into_elasticsearch=now() WHERE current_tree_log_id=?';
+    my $sth_log = $dbh->prepare($log_sql) or die $dbh->errstr;
+    $sth_log->bind_param(1, $current_tree_log_id);
+    $sth_log->execute() or die $sth_log->errstr;
 }
