@@ -42,7 +42,7 @@ die "need one md5 column for each url column" if @md5_column && (scalar @url_col
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
 $dbh->{AutoCommit} = 0;
 #my $insert_file_sql = 'INSERT INTO file(url, url_crc, md5) VALUES(?, crc32(?), ?) ON DUPLICATE KEY UPDATE file_id=LAST_INSERT_ID(file_id)';
-my $insert_file_sql = 'INSERT INTO file(url, url_crc, md5) SELECT f2.url, crc32(f2.url), f2.md5 FROM (SELECT ? AS url, ? AS md5 ) AS f2 ON DUPLICATE KEY UPDATE file_id=LAST_INSERT_ID(file_id)';
+my $insert_file_sql = 'INSERT INTO file(url, url_crc, md5, foreign_file) SELECT f2.url, crc32(f2.url), f2.md5, f2.foreign_file FROM (SELECT ? AS url, ? AS md5, ? AS foreign_file) AS f2 ON DUPLICATE KEY UPDATE file_id=LAST_INSERT_ID(file_id)';
 my $update_type_sql = 'UPDATE file SET data_type_id=(SELECT data_type_id FROM data_type WHERE code=?) WHERE file_id=?';
 my $update_analysis_group_sql = 'UPDATE file SET analysis_group_id=(SELECT analysis_group_id FROM analysis_group WHERE code=?) WHERE file_id=?';
 my $insert_data_collection_sql = 'INSERT IGNORE INTO file_data_collection(file_id, data_collection_id) SELECT ?, data_collection_id from data_collection where code=?';
@@ -100,6 +100,7 @@ while (my $line = <$fh>) {
 
     $sth_file->bind_param(1, $url);
     $sth_file->bind_param(2, defined $i_md5 ? $split_line[$i_md5] : undef);
+    $sth_file->bind_param(3, $url =~ /ftp\.1000genomes\.ebi\.ac\.uk/);
     $sth_file->execute() or die $sth_file->errstr;
     my $file_id = $sth_file->{mysql_insertid};
 

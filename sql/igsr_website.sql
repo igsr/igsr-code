@@ -53,6 +53,8 @@ CREATE TABLE file (
   md5 VARCHAR(32),
   data_type_id INT UNSIGNED,
   analysis_group_id INT UNSIGNED,
+  foreign_file TINYINT(1),
+  in_current_tree TINYINT(1),
   UNIQUE(url_crc, url),
   CONSTRAINT FOREIGN KEY (data_type_id) references data_type(data_type_id),
   CONSTRAINT FOREIGN KEY (analysis_group_id) references analysis_group(analysis_group_id)
@@ -86,9 +88,9 @@ CREATE TABLE file_data_collection (
   CONSTRAINT FOREIGN KEY (file_id) references file(file_id)
 );
 
-CREATE TABLE log (
-  log_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE current_tree_log (
+  current_tree_log_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   current_tree_mtime TIMESTAMP,
-  start_run_time TIMESTAMP,
-  complete_run_time TIMESTAMP
+  loaded_into_db TIMESTAMP,
+  loaded_into_elasticsearch TIMESTAMP
 );

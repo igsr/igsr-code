@@ -4,18 +4,15 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Search::Elasticsearch;
+use Digest::CRC qw(crc32);
 use DBI;
 use File::stat;
 
 my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
-my $current_tree = '/nfs/1000g-archive/vol1/ftp/current.tree';
-my $root = 'ftp://ftp.1000genomes.ebi.ac.uk/vol1/';
 my $check_timestamp;
 my @es_host;
 
 &GetOptions(
-  'current_tree=s' => \$current_tree,
-  'root=s'        => \$root,
   'dbpass=s'      => \$dbpass,
   'dbport=i'      => \$dbport,
   'dbuser=s'      => \$dbuser,
@@ -25,22 +22,26 @@ my @es_host;
   'es_host=s' =>\@es_host,
 );
 my @es = map {Search::Elasticsearch->new(nodes => $_, client => '1_0::Direct')} @es_host;
+my @es_bulks = map {$_->bulk_helper(index => 'igsr', type => 'file')} @es;
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
-my $select_file_sql = 'SELECT f.file_id, f.url, f.url_crc, dt.code data_type, ag.description analysis_group
+my $select_file_sql = 'SELECT f.file_id, f.url, dt.code data_type, ag.description analysis_group
     FROM file f LEFT JOIN data_type dt ON f.data_type_id = dt.data_type_id
     LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id
     WHERE f.url_crc=crc32(?) AND f.url=?';
-my $select_all_files_sql = 'SELECT f.file_id, f.url, f.url_crc, f.md5, dt.code data_type, ag.description analysis_group
+my $select_all_files_sql = 'SELECT f.file_id, f.url_crc, f.url, f.md5, dt.code data_type, ag.description analysis_group
     FROM file f LEFT JOIN data_type dt ON f.data_type_id = dt.data_type_id
-    LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id';
+    LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id
+    ORDER BY file_id';
 my $select_sample_sql = 'SELECT s.name from sample s, sample_file sf
     WHERE sf.sample_id=s.sample_id AND sf.file_id=?';
 my $select_data_collection_sql = 'SELECT dc.description, dc.reuse_policy from data_collection dc, file_data_collection fdc
     WHERE fdc.data_collection_id=dc.data_collection_id AND fdc.file_id=?
     ORDER BY dc.reuse_policy_precedence';
+my $insert_file_sql = 'INSERT INTO file(url, url_crc, md5, foreign_file) VALUES(?, ?, ?, ?)';
 my $sth_file = $dbh->prepare($select_file_sql) or die $dbh->errstr;
 my $sth_all_files = $dbh->prepare($select_all_files_sql) or die $dbh->errstr;
+my $sth_insert_file = $dbh->prepare($insert_file_sql) or die $dbh->errstr;
 my $sth_sample = $dbh->prepare($select_sample_sql) or die $dbh->errstr;
 my $sth_data_collection = $dbh->prepare($select_data_collection_sql) or die $dbh->errstr;
 
@@ -59,6 +60,51 @@ $sth_log->bind_param(1, $st->mtime);
 $sth_log->execute() or die $sth_log->errstr;
 my $log_id = $sth_log->{mysql_insertid};
 
+foreach my $es (@es) {
+  $es->indices->put_settings(
+    index => 'igsr',
+    body => {
+      'index.refresh_interval' => -1,
+      'index.number_of_replicas' => 0,
+    }
+  );
+}
+
+my %current_tree;
+open my $fh, '<', $current_tree or die "could not open current_tree $!";
+LINE:
+while (my $line = <$fh>) {
+  my @split_line = split("\t", $line);
+  next LINE if $split_line[1] ne 'file';
+  chomp $line;
+  my $url = $root.$split_line[0];
+  $current_tree{crc32($url)}{$url}{md5}=$split_line[4];
+close $fh;
+
+$sth_all_files->execute() or die $sth_all_files->errstr;
+FILE:
+while (my $row = $sth_all_files->fetchrow_hashref()) {
+  next FILE if !$row->{foreign_file} && !$current_tree{$row->{url_crc}}{$row->{url}};
+  $current_tree{$row->{url_crc}}{$row->{url}}{processed} = 1;
+  add_file($row)
+}
+
+while (my ($crc_url, $crc_url_hash) = each %current_tree) {
+  URL:
+  while (my ($url, $url_hash) = each %$crc_url_hash) {
+    next URL if $url_hash->{processed};
+    $sth_insert_file->bind_param(1, $url);
+    $sth_insert_file->bind_param(2, $crc_url);
+    $sth_insert_file->bind_param(3, $url_hash->{md5});
+    $sth_insert_file->bind_param(4, 0);
+  }
+  $sth_insert_file->execute() or die $sth_file->errstr;
+}
+
+
+
+
+
 
 my %processed_files;
 open my $fh, '<', $current_tree or die "could not open current_tree $!";
@@ -66,6 +112,7 @@ LINE:
 while (my $line = <$fh>) {
   my @split_line = split("\t", $line);
   next LINE if $split_line[1] ne 'file';
+  chomp $line;
   my $url = $root.$split_line[0];
 
   $sth_file->bind_param(1, $url);
@@ -87,6 +134,19 @@ while (my $row = $sth_all_files->fetchrow_hashref()) {
   add_file($row);
 }
 
+foreach my $es_bulk (@es_bulks) {
+  $es_bulk->flush();
+}
+
+foreach my $es (@es) {
+  $es->indices->put_settings(
+    index => 'igsr',
+    body => {
+      'index.refresh_interval' => '1s',
+      'index.number_of_replicas' => 1,
+    }
+  );
+}
 
 $log_sql = 'UPDATE log SET complete_run_time=now() WHERE log_id=?';
 $sth_log = $dbh->prepare($log_sql) or die $dbh->errstr;
@@ -116,12 +176,10 @@ sub add_file {
     push(@{$es_doc{dataCollections}}, $row->{description});
   }
 
-  foreach my $es (@es) {
-    $es->index(
-      index => 'igsr',
-      type => 'file',
-      id => $file_mysql_row->{url_crc} || crc32($file_mysql_row->{url}),
-      body => \%es_doc,
-    );
+  foreach my $es_bulk (@es_bulks) {
+    $es_bulk->index({
+      #id => $file_mysql_row->{url_crc} || crc32($file_mysql_row->{url}),
+      source => \%es_doc,
+    });
   }
 }
