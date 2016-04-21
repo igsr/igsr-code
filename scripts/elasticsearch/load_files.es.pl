@@ -4,9 +4,7 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Search::Elasticsearch;
-use Digest::CRC qw(crc32);
 use DBI;
-use File::stat;
 
 my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
 my $check_timestamp;
@@ -36,7 +34,6 @@ my $select_data_collection_sql = 'SELECT dc.description, dc.reuse_policy from da
     ORDER BY dc.reuse_policy_precedence';
 my $insert_file_sql = 'INSERT INTO file(url, url_crc, md5, foreign_file) VALUES(?, ?, ?, ?)';
 my $sth_all_files = $dbh->prepare($select_all_files_sql) or die $dbh->errstr;
-my $sth_insert_file = $dbh->prepare($insert_file_sql) or die $dbh->errstr;
 my $sth_sample = $dbh->prepare($select_sample_sql) or die $dbh->errstr;
 my $sth_data_collection = $dbh->prepare($select_data_collection_sql) or die $dbh->errstr;
 
@@ -63,22 +60,26 @@ foreach my $es (@es) {
 $sth_all_files->execute() or die $sth_all_files->errstr;
 FILE:
 while (my $row_file = $sth_all_files->fetchrow_hashref()) {
-  next FILE if !($row->{foreign_file} || $row->{in_current_tree});
+  next FILE if !($row_file->{foreign_file} || $row_file->{in_current_tree});
 
   my %es_doc = (
-    url => $file_row->{url},
-    analysisGroup => $file_row->{analysis_group},
-    dataType => $file_row->{data_type},
-    md5 => $md5 // $file_row->{md5},
+    url => $row_file->{url},
+    md5 => $row_file->{md5},
   );
+  if (my $analysis_group = $row_file->{analysis_group}) {
+    $es_doc{analysisGroup} = $analysis_group;
+  }
+  if (my $data_type = $row_file->{data_type}) {
+    $es_doc{dataType} = $data_type;
+  }
 
-  $sth_sample->bind_param(1, $file_row->{file_id});
+  $sth_sample->bind_param(1, $row_file->{file_id});
   $sth_sample->execute() or die $sth_sample->errstr;
   while (my $row = $sth_sample->fetchrow_hashref()) {
     push(@{$es_doc{samples}}, $row->{name});
   }
 
-  $sth_data_collection->bind_param(1, $file_row->{file_id});
+  $sth_data_collection->bind_param(1, $row_file->{file_id});
   $sth_data_collection->execute() or die $sth_data_collection->errstr;
   while (my $row = $sth_data_collection->fetchrow_hashref()) {
     $es_doc{dataReusePolicy} //= $row->{reuse_policy};
@@ -87,7 +88,7 @@ while (my $row_file = $sth_all_files->fetchrow_hashref()) {
 
   foreach my $es_bulk (@es_bulks) {
     $es_bulk->index({
-      id => sprintf('%d', $file_row->{file_id}),
+      id => sprintf('%.9d', $row_file->{file_id}),
       source => \%es_doc,
     });
   }
@@ -108,7 +109,6 @@ foreach my $es_bulk (@es_bulks) {
 }
 
 if ($current_tree_log_id) {
-    my $log_sql = 'INSERT INTO log(current_tree_mtime, start_run_time) VALUES (FROM_UNIXTIME(?), now())';
     my $log_sql = 'UPDATE current_tree_log SET loaded_into_elasticsearch=now() WHERE current_tree_log_id=?';
     my $sth_log = $dbh->prepare($log_sql) or die $dbh->errstr;
     $sth_log->bind_param(1, $current_tree_log_id);
