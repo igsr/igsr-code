@@ -55,6 +55,7 @@ CREATE TABLE file (
   analysis_group_id INT UNSIGNED,
   foreign_file TINYINT(1),
   in_current_tree TINYINT(1),
+  indexed_in_elasticsearch TINYINT(1),
   UNIQUE(url_crc, url),
   CONSTRAINT FOREIGN KEY (data_type_id) references data_type(data_type_id),
   CONSTRAINT FOREIGN KEY (analysis_group_id) references analysis_group(analysis_group_id)

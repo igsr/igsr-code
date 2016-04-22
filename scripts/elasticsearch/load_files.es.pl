@@ -16,24 +16,28 @@ my @es_host;
   'dbuser=s'      => \$dbuser,
   'dbhost=s'      => \$dbhost,
   'dbname=s'      => \$dbname,
-  'check_timestamp=s' => \$check_timestamp,
+  'check_timestamp!' => \$check_timestamp,
   'es_host=s' =>\@es_host,
 );
 my @es = map {Search::Elasticsearch->new(nodes => $_, client => '1_0::Direct')} @es_host;
 my @es_bulks = map {$_->bulk_helper(index => 'igsr', type => 'file')} @es;
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
-my $select_all_files_sql = 'SELECT f.file_id, f.url, f.md5, f.foreign_file, f.in_current_tree,  dt.code data_type, ag.description analysis_group
+my $select_new_files_sql = 'SELECT f.file_id, f.url, f.md5, dt.code data_type, ag.description analysis_group
     FROM file f LEFT JOIN data_type dt ON f.data_type_id = dt.data_type_id
     LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id
+    WHERE (f.foreign_file IS TRUE OR f.in_current_tree IS TRUE) AND f.indexed_in_elasticsearch IS NOT TRUE
+    ORDER BY file_id';
+my $select_old_files_sql = 'SELECT f.file_id FROM file f WHERE 
+    WHERE f.foreign_file IS NOT TRUE AND f.in_current_tree IS NOT TRUE AND f.indexed_in_elasticsearch IS TRUE
     ORDER BY file_id';
 my $select_sample_sql = 'SELECT s.name from sample s, sample_file sf
     WHERE sf.sample_id=s.sample_id AND sf.file_id=?';
 my $select_data_collection_sql = 'SELECT dc.description, dc.reuse_policy from data_collection dc, file_data_collection fdc
     WHERE fdc.data_collection_id=dc.data_collection_id AND fdc.file_id=?
     ORDER BY dc.reuse_policy_precedence';
-my $insert_file_sql = 'INSERT INTO file(url, url_crc, md5, foreign_file) VALUES(?, ?, ?, ?)';
-my $sth_all_files = $dbh->prepare($select_all_files_sql) or die $dbh->errstr;
+my $sth_new_files = $dbh->prepare($select_new_files_sql) or die $dbh->errstr;
+my $sth_old_files = $dbh->prepare($select_old_files_sql) or die $dbh->errstr;
 my $sth_sample = $dbh->prepare($select_sample_sql) or die $dbh->errstr;
 my $sth_data_collection = $dbh->prepare($select_data_collection_sql) or die $dbh->errstr;
 
@@ -57,10 +61,9 @@ foreach my $es (@es) {
 }
 
 
-$sth_all_files->execute() or die $sth_all_files->errstr;
+$sth_new_files->execute() or die $sth_new_files->errstr;
 FILE:
-while (my $row_file = $sth_all_files->fetchrow_hashref()) {
-  next FILE if !($row_file->{foreign_file} || $row_file->{in_current_tree});
+while (my $row_file = $sth_new_files->fetchrow_hashref()) {
 
   my %es_doc = (
     url => $row_file->{url},
@@ -94,6 +97,21 @@ while (my $row_file = $sth_all_files->fetchrow_hashref()) {
   }
 }
 
+$sth_old_files->execute() or die $sth_old_files->errstr;
+FILE:
+while (my $row_file = $sth_old_files->fetchrow_hashref()) {
+  foreach my $es_bulk (@es_bulks) {
+    $es_bulk->delete({
+      id => sprintf('%.9d', $row_file->{file_id}),
+    });
+  }
+}
+
+
+foreach my $es_bulk (@es_bulks) {
+  $es_bulk->flush();
+}
+
 foreach my $es (@es) {
   $es->indices->put_settings(
     index => 'igsr',
@@ -102,10 +120,6 @@ foreach my $es (@es) {
       'index.number_of_replicas' => 1,
     }
   );
-}
-
-foreach my $es_bulk (@es_bulks) {
-  $es_bulk->flush();
 }
 
 if ($current_tree_log_id) {

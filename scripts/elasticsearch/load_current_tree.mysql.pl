@@ -19,7 +19,7 @@ my $check_timestamp;
   'dbuser=s'      => \$dbuser,
   'dbhost=s'      => \$dbhost,
   'dbname=s'      => \$dbname,
-  'check_timestamp' => \$check_timestamp,
+  'check_timestamp!' => \$check_timestamp,
 );
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
@@ -36,13 +36,20 @@ if ($check_timestamp) {
 
 $dbh->{AutoCommit} = 0;
 my $reset_sql = 'UPDATE file SET in_current_tree=0';
-my $insert_file_sql = 'INSERT INTO file(url, url_crc, md5, foreign_file, in_current_tree)
+my $select_file_sql =
+  'SELECT f.file_id, f.md5, f.indexed_in_elasticsearch
+    FROM file f, (SELECT ? AS url) f2
+    WHERE f.url_crc=crc32(f2.url) AND f.url=f2.url';
+my $insert_file_sql =
+  'INSERT INTO file(url, url_crc, md5, foreign_file, in_current_tree)
   SELECT f2.url, crc32(f2.url), f2.md5, 0, 1
-    FROM (SELECT ? AS url, ? AS md5) f2
-  ON DUPLICATE KEY UPDATE in_current_tree=1, md5=f2.md5';
+    FROM (SELECT ? AS url, ? AS md5) f2';
+my $update_file_sql = 'UPDATE file SET md5=?, in_current_tree=1, indexed_in_elasticsearch=? WHERE file_id=?';
 my $log_sql = 'INSERT INTO current_tree_log(current_tree_mtime, loaded_into_db) VALUES (FROM_UNIXTIME(?), now())';
 my $sth_reset = $dbh->prepare($reset_sql) or die $dbh->errstr;
+my $sth_select = $dbh->prepare($select_file_sql) or die $dbh->errstr;
 my $sth_insert = $dbh->prepare($insert_file_sql) or die $dbh->errstr;
+my $sth_update = $dbh->prepare($update_file_sql) or die $dbh->errstr;
 my $sth_log = $dbh->prepare($log_sql) or die $dbh->errstr;
 $sth_reset->execute() or die $sth_reset->errstr;
 
@@ -53,9 +60,21 @@ while (my $line = <$fh>) {
   next LINE if $split_line[1] ne 'file';
   chomp $line;
   my $url = $root.$split_line[0];
-  $sth_insert->bind_param(1, $url);
-  $sth_insert->bind_param(2, $split_line[4]);
-  $sth_insert->execute() or die $sth_insert->errstr;
+
+  $sth_select->bind_param(1, $url);
+  $sth_select->execute() or die $sth_select->errstr;
+  if (my $row = $sth_select->fetchrow_hashref()) {
+    $sth_update->bind_param(1, $split_line[4]);
+    $sth_update->bind_param(2, $split_line[4] eq $row->{md5} ? $row->{indexed_in_elasticsearch} : 0);
+    $sth_update->bind_param(3, $row->{file_id});
+    $sth_update->execute() or die $sth_update->errstr;
+  }
+  else {
+    $sth_insert->bind_param(1, $url);
+    $sth_insert->bind_param(2, $split_line[4]);
+    $sth_insert->execute() or die $sth_insert->errstr;
+  }
+
 }
 close $fh;
 
