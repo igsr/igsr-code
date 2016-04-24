@@ -1,0 +1,57 @@
+{
+    "population": {
+        "properties": {
+            "code": {
+                "type": "string"
+            }, 
+            "dataCollections": {
+                "properties": {
+                    "alignment": {
+                        "type": "string"
+                    }, 
+                    "analysisGroups": {
+                        "properties": {
+                            "analysisGroup": {
+                                "type": "string"
+                            }, 
+                            "analysisGroupData": {
+                                "type": "string"
+                            }
+                        }
+                    }, 
+                    "dataCollection": {
+                        "type": "string"
+                    }, 
+                    "dataReusePolicy": {
+                        "type": "string"
+                    }, 
+                    "dataTypes": {
+                        "type": "string"
+                    }, 
+                    "sequence": {
+                        "type": "string"
+                    }, 
+                    "variants": {
+                        "type": "string"
+                    }
+                }
+            }, 
+            "description": {
+                "type": "string"
+            }, 
+            "name": {
+                "type": "string"
+            }, 
+            "superpopulation": {
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    }, 
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}

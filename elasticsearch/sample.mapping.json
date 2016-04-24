@@ -1,0 +1,70 @@
+{
+    "sample": {
+        "properties": {
+            "biosampleId": {
+                "type": "string"
+            }, 
+            "dataCollections": {
+                "properties": {
+                    "alignment": {
+                        "type": "string"
+                    }, 
+                    "dataCollection": {
+                        "type": "string"
+                    }, 
+                    "dataReusePolicy": {
+                        "type": "string"
+                    }, 
+                    "dataTypes": {
+                        "type": "string"
+                    }, 
+                    "sequence": {
+                        "type": "string"
+                    }, 
+                    "variants": {
+                        "type": "string"
+                    }
+                }
+            }, 
+            "name": {
+                "type": "string"
+            }, 
+            "population": {
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    }, 
+                    "description": {
+                        "type": "string"
+                    }, 
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            }, 
+            "relatedSample": {
+                "properties": {
+                    "relatedSampleName": {
+                        "type": "string"
+                    }, 
+                    "relationship": {
+                        "type": "string"
+                    }
+                }
+            }, 
+            "sex": {
+                "type": "string"
+            }, 
+            "superpopulation": {
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    }, 
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}
