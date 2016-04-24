@@ -3,6 +3,7 @@
 use strict;
 use warnings;
 use Getopt::Long;
+use VCF;
 use DBI;
 
 my @vcf_file;
@@ -45,11 +46,10 @@ my $sth_sample = $dbh->prepare($insert_sample_sql) or die $dbh->errstr;
 
 $dbh->{AutoCommit} = 0;
 foreach my $vcf (@vcf_file) {
-  my $vcf_header = `tabix -H $vcf | tail -1`;
-  die "error opening $vcf" if !$vcf_header;
-  chomp $vcf_header;
-  my @split_line = split("\t", $vcf_header);
-  my @samples = @split_line[9..$#split_line];
+  my $vcf_obj = VCF->new(file => $vcf);
+  $vcf_obj->parse_header();
+  my @samples = $vcf_obj->get_samples();
+  $vcf->close();
 
   $vcf =~ s/^$trim//;
   my $url = $root.$vcf;
