@@ -1,6 +1,7 @@
 {
     "file": {
         "_all": {"enabled": false},
+        "dynamic": "strict",
         "properties": {
             "analysisGroup": {
                 "type": "string",

@@ -1,5 +1,6 @@
 {
     "population": {
+        "dynamic": "strict",
         "properties": {
             "code": {
                 "type": "string"

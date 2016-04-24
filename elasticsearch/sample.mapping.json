@@ -1,5 +1,6 @@
 {
     "sample": {
+        "dynamic": "strict",
         "properties": {
             "biosampleId": {
                 "type": "string"
