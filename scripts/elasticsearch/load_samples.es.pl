@@ -9,6 +9,7 @@ use feature qw(fc);
 
 my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1kro', 4197, undef);
 my @es_host;
+my $es_index_name = 'igsr';
 
 &GetOptions(
   'dbpass=s'      => \$dbpass,
@@ -17,6 +18,7 @@ my @es_host;
   'dbhost=s'      => \$dbhost,
   'dbname=s'      => \$dbname,
   'es_host=s' =>\@es_host,
+  'es_index_name=s' =>\$es_index_name,
 );
 my @es = map {Search::Elasticsearch->new(nodes => $_, client => '1_0::Direct')} @es_host;
 
@@ -84,11 +86,14 @@ while (my $row = $sth_sample->fetchrow_hashref()) {
   }
 
   foreach my $es (@es) {
-    $es->index(
-      index => 'igsr',
+    eval{$es->index(
+      index => $es_index_name,
       type => 'sample',
       id => $row->{name},
       body => \%es_doc,
-    );
+    );};
+    if (my $error = $@) {
+      die "error indexing sample in $es_index_name index:".$error->{text};
+    }
   }
 }

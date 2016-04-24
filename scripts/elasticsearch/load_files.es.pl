@@ -8,6 +8,7 @@ use DBI;
 
 my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
 my $check_timestamp;
+my $es_index_name = 'igsr';
 my @es_host;
 
 &GetOptions(
@@ -18,9 +19,10 @@ my @es_host;
   'dbname=s'      => \$dbname,
   'check_timestamp!' => \$check_timestamp,
   'es_host=s' =>\@es_host,
+  'es_index_name=s' =>\$es_index_name,
 );
 my @es = map {Search::Elasticsearch->new(nodes => $_, client => '1_0::Direct')} @es_host;
-my @es_bulks = map {$_->bulk_helper(index => 'igsr', type => 'file')} @es;
+my @es_bulks = map {$_->bulk_helper(index => $es_index_name, type => 'file')} @es;
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
 my $select_new_files_sql = 'SELECT f.file_id, f.url, f.md5, dt.code data_type, ag.description analysis_group
@@ -28,7 +30,7 @@ my $select_new_files_sql = 'SELECT f.file_id, f.url, f.md5, dt.code data_type, a
     LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id
     WHERE (f.foreign_file IS TRUE OR f.in_current_tree IS TRUE) AND f.indexed_in_elasticsearch IS NOT TRUE
     ORDER BY file_id';
-my $select_old_files_sql = 'SELECT f.file_id FROM file f WHERE 
+my $select_old_files_sql = 'SELECT f.file_id FROM file f
     WHERE f.foreign_file IS NOT TRUE AND f.in_current_tree IS NOT TRUE AND f.indexed_in_elasticsearch IS TRUE
     ORDER BY file_id';
 my $select_sample_sql = 'SELECT s.name from sample s, sample_file sf
@@ -36,8 +38,10 @@ my $select_sample_sql = 'SELECT s.name from sample s, sample_file sf
 my $select_data_collection_sql = 'SELECT dc.description, dc.reuse_policy from data_collection dc, file_data_collection fdc
     WHERE fdc.data_collection_id=dc.data_collection_id AND fdc.file_id=?
     ORDER BY dc.reuse_policy_precedence';
+my $update_file_sql = 'UPDATE file SET indexed_in_elasticsearch = (foreign_file IS TRUE OR in_current_tree IS TRUE)';
 my $sth_new_files = $dbh->prepare($select_new_files_sql) or die $dbh->errstr;
 my $sth_old_files = $dbh->prepare($select_old_files_sql) or die $dbh->errstr;
+my $sth_file_update = $dbh->prepare($update_file_sql) or die $dbh->errstr;
 my $sth_sample = $dbh->prepare($select_sample_sql) or die $dbh->errstr;
 my $sth_data_collection = $dbh->prepare($select_data_collection_sql) or die $dbh->errstr;
 
@@ -51,13 +55,16 @@ exit if $check_timestamp && (!$row_timestamp || $row_timestamp->{loaded_into_ela
 my $current_tree_log_id = $row_timestamp ? $row_timestamp->{current_tree_log_id} : undef;
 
 foreach my $es (@es) {
-  $es->indices->put_settings(
-    index => 'igsr',
+  eval{$es->indices->put_settings(
+    index => $es_index_name,
     body => {
       'index.refresh_interval' => -1,
       'index.number_of_replicas' => 0,
     }
-  );
+  );};
+  if (my $error = $@) {
+    die "error changing settings for elasticsearch index $es_index_name: ".$error->{text};
+  }
 }
 
 
@@ -90,10 +97,13 @@ while (my $row_file = $sth_new_files->fetchrow_hashref()) {
   }
 
   foreach my $es_bulk (@es_bulks) {
-    $es_bulk->index({
+    eval {$es_bulk->index({
       id => sprintf('%.9d', $row_file->{file_id}),
       source => \%es_doc,
-    });
+    });};
+    if (my $error = $@) {
+      die "error bullk indexing file in $es_index_name index:".$error->{text};
+    }
   }
 }
 
@@ -113,14 +123,19 @@ foreach my $es_bulk (@es_bulks) {
 }
 
 foreach my $es (@es) {
-  $es->indices->put_settings(
-    index => 'igsr',
+  eval{$es->indices->put_settings(
+    index => $es_index_name,
     body => {
       'index.refresh_interval' => '1s',
       'index.number_of_replicas' => 1,
     }
-  );
+  );};
+  if (my $error = $@) {
+    die "error changing settings for elasticsearch index $es_index_name: ".$error->{text};
+  }
 }
+
+$sth_file_update->execute() or die $sth_file_update->errstr;
 
 if ($current_tree_log_id) {
     my $log_sql = 'UPDATE current_tree_log SET loaded_into_elasticsearch=now() WHERE current_tree_log_id=?';
