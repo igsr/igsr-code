@@ -81,7 +81,7 @@ foreach my $es (@es_to) {
   if (my $error = $@) {
     die "error getting index alias for $es_index_name: ".$error->{text};
   }
-  my @existing_aliases = grep {$_->{aliases}{$es_index_name}} keys %$get_alias_res;
+  my @existing_aliases = grep {exists $get_alias_res->{$_}->{aliases}{$es_index_name}} keys %$get_alias_res;
   die "unexpected number of existing aliases @existing_aliases" if scalar @existing_aliases != 1;
   my $old_index_name = $existing_aliases[0];
 
