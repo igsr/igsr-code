@@ -4,13 +4,13 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Search::Elasticsearch;
+use File::Rsync;
 use DBI;
 
-my $from_es_host = 'ves-hx-e4:9200';
+my $from_es_host = 'ves-hx-e4';
 my @to_es_host;
 my $repo = 'hx_hh_sync';
 my $es_index_name = 'igsr';
-my $project_name = 'reseq-info';
 my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
 my $check_timestamp;
 
@@ -19,7 +19,6 @@ my $check_timestamp;
   'to_es_host=s' =>\@to_es_host,
   'repo=s' =>\$repo,
   'es_index_name=s' =>\$es_index_name,
-  'project_name=s' =>\$project_name,
   'dbpass=s'      => \$dbpass,
   'dbport=i'      => \$dbport,
   'dbuser=s'      => \$dbuser,
@@ -30,7 +29,7 @@ my $check_timestamp;
 
 # Some defaults:
 if (!scalar @to_es_host) {
-  @to_es_host = ('ves-pg-e4:9200', 'ves-oy-e4:9200');
+  @to_es_host = ('ves-pg-e4', 'ves-oy-e4');
 }
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
@@ -43,8 +42,8 @@ my $row_timestamp = $sth_timestamp->fetchrow_hashref();
 exit if $check_timestamp && (!$row_timestamp || $row_timestamp->{synced_hh_to_hx});
 my $current_tree_log_id = $row_timestamp ? $row_timestamp->{current_tree_log_id} : undef;
 
-my @es_to = map {Search::Elasticsearch->new(nodes => $_, client => '1_0::Direct')} @to_es_host;
-my $es_from = Search::Elasticsearch->new(nodes => $from_es_host, client => '1_0::Direct');
+my @es_to = map {Search::Elasticsearch->new(nodes => "$_:9200", client => '1_0::Direct')} @to_es_host;
+my $es_from = Search::Elasticsearch->new(nodes => "$from_es_host:9200", client => '1_0::Direct');
 
 my ($sec,$min,$hour,$day,$month,$year) = localtime();
 my $snapshot_name = sprintf("%s_%04d%02d%02d%02d%02d%02d", $es_index_name, $year+1900, $month+1, $day, $hour, $min, $sec);
@@ -53,7 +52,8 @@ my $repo_res = $es_from->snapshot->get_repository(
     repository => $repo,
 );
 my $repo_dir = $repo_res->{$repo}{settings}{location} || die "did not get repo directory for $repo";
-$repo_dir =~ s{/+$}{};
+$repo_dir .= '/'; # important for rsync
+$repo_dir =~ s{//}{/}g;
 
 eval{$es_from->snapshot->create(
     repository => $repo,
@@ -67,11 +67,10 @@ if (my $error = $@) {
   die "error creating snapshot $snapshot_name in $repo for index $es_index_name: ".$error->{text};
 }
 
-my $sync_command = "sync-project -w $project_name";
-system($sync_command);
-die "$sync_command $!" if $? == -1;
-if (my $exit = $? >> 8) {
-  die "$sync_command exited with value $exit";
+my $rsync = File::Rsync->new({archive=>1});
+foreach my $host (@to_es_host) {
+  $rsync->exec({archive => 1, src => $repo_dir, dest => "$host:$repo_dir"})
+      or die join("\n", "error syncing $repo_dir to $host", $rsync->err);
 }
 
 foreach my $es (@es_to) {

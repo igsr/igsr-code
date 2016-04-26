@@ -9,7 +9,7 @@ use DBI;
 my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
 my $check_timestamp;
 my $es_index_name = 'igsr';
-my $es_host = 'ves-hx-e4:9200';
+my $es_host = 'ves-hx-e4';
 
 &GetOptions(
   'dbpass=s'      => \$dbpass,
@@ -21,7 +21,7 @@ my $es_host = 'ves-hx-e4:9200';
   'es_host=s' =>\$es_host,
   'es_index_name=s' =>\$es_index_name,
 );
-my $es = Search::Elasticsearch->new(nodes => $es_host, client => '1_0::Direct');
+my $es = Search::Elasticsearch->new(nodes => "$es_host:9200", client => '1_0::Direct');
 my $es_bulk = $es->bulk_helper(index => $es_index_name, type => 'file');
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
