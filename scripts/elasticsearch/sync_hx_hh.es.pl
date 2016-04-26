@@ -34,7 +34,7 @@ if (!scalar @to_es_host) {
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
 my $timestamp_sql =
-   'SELECT current_tree_log_id, synced_hh_to_hx FROM current_tree_log
+   'SELECT current_tree_log_id, synced_hx_to_hh FROM current_tree_log
     ORDER BY loaded_into_elasticsearch DESC limit 1';
 my $sth_timestamp = $dbh->prepare($timestamp_sql) or die $dbh->errstr;
 $sth_timestamp->execute() or die $sth_timestamp->errstr;
