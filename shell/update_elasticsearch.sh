@@ -19,5 +19,4 @@ perl $ES_SCRIPTS/sync_hx_hh.es.pl \
   -to ves-pg-e4 \
   -to ves-oy-e4 \
   -repo hx_hh_sync \
-  -es_index_name igsr_beta \
-  -project_name reseq-info
+  -es_index_name igsr_beta
