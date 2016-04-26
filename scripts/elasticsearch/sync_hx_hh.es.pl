@@ -60,7 +60,7 @@ eval{$es_from->snapshot->create(
     snapshot => $snapshot_name,
     wait_for_completion => 1,
     body => {
-        indicies => $es_index_name,
+        indices => $es_index_name,
     }
 );};
 if (my $error = $@) {
