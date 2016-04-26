@@ -1,6 +1,8 @@
 #!/bin/bash
 
-perl load_vcf_file.mysql.pl \
+ES_SCRIPTS=`dirname $0`/../scripts/elasticsearch
+
+perl $ES_SCRIPTS/load_vcf_file.mysql.pl \
   -data_collection phase3 \
   -dbpass $RESEQTRACK_PASS \
   -analysis_group integrated_calls \
@@ -30,7 +32,7 @@ perl load_vcf_file.mysql.pl \
   -file /nfs/1000g-archive/vol1/ftp/release/20130502/ALL.chrX.phase3_shapeit2_mvncall_integrated_v1b.20130502.genotypes.vcf.gz \
   -file /nfs/1000g-archive/vol1/ftp/release/20130502/ALL.chrY.phase3_integrated_v2a.20130502.genotypes.vcf.gz
 
-perl load_vcf_file.mysql.pl \
+perl $ES_SCRIPTS/load_vcf_file.mysql.pl \
   -data_collection phase1 \
   -dbpass $RESEQTRACK_PASS \
   -analysis_group integrated_calls \
@@ -61,7 +63,7 @@ perl load_vcf_file.mysql.pl \
   -file /nfs/1000g-archive/vol1/ftp/phase1/analysis_results/integrated_call_sets/ALL.chrY.genome_strip_hq.20101123.svs.low_coverage.genotypes.vcf.gz \
   -file /nfs/1000g-archive/vol1/ftp/phase1/analysis_results/integrated_call_sets/ALL.chrY.phase1_samtools_si.20101123.snps.low_coverage.genotypes.vcf.gz \
 
-perl load_vcf_file.mysql.pl \
+perl $ES_SCRIPTS/load_vcf_file.mysql.pl \
   -data_collection phase3 \
   -analysis_group hd_genotype_chip \
   -dbpass $RESEQTRACK_PASS \
