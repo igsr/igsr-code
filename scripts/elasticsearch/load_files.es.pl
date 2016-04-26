@@ -9,7 +9,7 @@ use DBI;
 my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
 my $check_timestamp;
 my $es_index_name = 'igsr';
-my @es_host;
+my $es_host = 'ves-hx-e4:9200';
 
 &GetOptions(
   'dbpass=s'      => \$dbpass,
@@ -18,11 +18,11 @@ my @es_host;
   'dbhost=s'      => \$dbhost,
   'dbname=s'      => \$dbname,
   'check_timestamp!' => \$check_timestamp,
-  'es_host=s' =>\@es_host,
+  'es_host=s' =>\$es_host,
   'es_index_name=s' =>\$es_index_name,
 );
-my @es = map {Search::Elasticsearch->new(nodes => $_, client => '1_0::Direct')} @es_host;
-my @es_bulks = map {$_->bulk_helper(index => $es_index_name, type => 'file')} @es;
+my $es = Search::Elasticsearch->new(nodes => $es_host, client => '1_0::Direct');
+my $es_bulk = $es->bulk_helper(index => $es_index_name, type => 'file');
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
 my $select_new_files_sql = 'SELECT f.file_id, f.url, f.md5, dt.code data_type, ag.description analysis_group
@@ -54,17 +54,15 @@ my $row_timestamp = $sth_timestamp->fetchrow_hashref();
 exit if $check_timestamp && (!$row_timestamp || $row_timestamp->{loaded_into_elasticsearch});
 my $current_tree_log_id = $row_timestamp ? $row_timestamp->{current_tree_log_id} : undef;
 
-foreach my $es (@es) {
-  eval{$es->indices->put_settings(
-    index => $es_index_name,
-    body => {
-      'index.refresh_interval' => -1,
-      'index.number_of_replicas' => 0,
-    }
-  );};
-  if (my $error = $@) {
-    die "error changing settings for elasticsearch index $es_index_name: ".$error->{text};
+eval{$es->indices->put_settings(
+  index => $es_index_name,
+  body => {
+    'index.refresh_interval' => -1,
+    'index.number_of_replicas' => 0,
   }
+);};
+if (my $error = $@) {
+  die "error changing settings for elasticsearch index $es_index_name: ".$error->{text};
 }
 
 
@@ -96,43 +94,35 @@ while (my $row_file = $sth_new_files->fetchrow_hashref()) {
     push(@{$es_doc{dataCollections}}, $row->{description});
   }
 
-  foreach my $es_bulk (@es_bulks) {
-    eval {$es_bulk->index({
-      id => sprintf('%.9d', $row_file->{file_id}),
-      source => \%es_doc,
-    });};
-    if (my $error = $@) {
-      die "error bullk indexing file in $es_index_name index:".$error->{text};
-    }
+  eval {$es_bulk->index({
+    id => sprintf('%.9d', $row_file->{file_id}),
+    source => \%es_doc,
+  });};
+  if (my $error = $@) {
+    die "error bullk indexing file in $es_index_name index:".$error->{text};
   }
 }
 
 $sth_old_files->execute() or die $sth_old_files->errstr;
 FILE:
 while (my $row_file = $sth_old_files->fetchrow_hashref()) {
-  foreach my $es_bulk (@es_bulks) {
-    $es_bulk->delete({
-      id => sprintf('%.9d', $row_file->{file_id}),
-    });
-  }
+  $es_bulk->delete({
+    id => sprintf('%.9d', $row_file->{file_id}),
+  });
 }
 
 
-foreach my $es_bulk (@es_bulks) {
-  $es_bulk->flush();
-}
+$es_bulk->flush();
 
-foreach my $es (@es) {
-  eval{$es->indices->put_settings(
-    index => $es_index_name,
-    body => {
-      'index.refresh_interval' => '1s',
-      'index.number_of_replicas' => 1,
-    }
-  );};
-  if (my $error = $@) {
-    die "error changing settings for elasticsearch index $es_index_name: ".$error->{text};
+eval{$es->indices->put_settings(
+  index => $es_index_name,
+  body => {
+    'index.refresh_interval' => '1s',
+    'index.number_of_replicas' => 1,
   }
+);};
+if (my $error = $@) {
+  die "error changing settings for elasticsearch index $es_index_name: ".$error->{text};
 }
 
 $sth_file_update->execute() or die $sth_file_update->errstr;
