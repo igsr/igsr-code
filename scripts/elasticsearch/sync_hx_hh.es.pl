@@ -90,7 +90,7 @@ foreach my $es (@es_to) {
     snapshot => $snapshot_name,
     wait_for_completion => 1,
     body => {
-        indicies => $es_index_name,
+        indices => $es_index_name,
         rename_pattern => $es_index_name,
         rename_replacement => $snapshot_name,
     }
