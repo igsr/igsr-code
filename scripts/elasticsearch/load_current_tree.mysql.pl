@@ -103,6 +103,7 @@ LINE:
 while (my $line = <$fh>) {
   my @split_line = split("\t", $line);
   next LINE if $split_line[1] ne 'file';
+  next LINE if !$split_line[0];
   chomp $line;
   my $url = $root.$split_line[0];
 

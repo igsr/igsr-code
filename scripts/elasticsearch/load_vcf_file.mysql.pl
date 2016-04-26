@@ -45,7 +45,7 @@ my $sth_data_collection = $dbh->prepare($insert_data_collection_sql) or die $dbh
 my $sth_sample = $dbh->prepare($insert_sample_sql) or die $dbh->errstr;
 
 $dbh->{AutoCommit} = 0;
-foreach my $vcf (@vcf_file) {
+foreach my $vcf (grep {$_} @vcf_file) {
   my $vcf_obj = VCF->new(file => $vcf);
   $vcf_obj->parse_header();
   my @samples = $vcf_obj->get_samples();

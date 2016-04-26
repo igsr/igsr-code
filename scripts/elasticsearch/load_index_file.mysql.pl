@@ -97,6 +97,7 @@ while (my $line = <$fh>) {
   next LINE if defined $i_withdrawn && $split_line[$i_withdrawn];
   foreach my $j (0..$#i_url) {
     my ($i_url, $i_md5) = ($i_url[$j], $i_md5[$j]);
+    next LINE if !$split_line[$i_url];
     my $url = $root.$split_line[$i_url];
 
     #temporary line until index files are fixed:

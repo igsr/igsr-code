@@ -142,6 +142,7 @@ perl load_index_file.mysql.pl \
   -sample_column SAMPLE_NAME \
   -withdrawn_column WITHDRAWN \
   -analysis_group_column ANALYSIS_GROUP \
+  -root ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/ \
   -dbpass $RESEQTRACK_PASS
 
 perl load_index_file.mysql.pl \
