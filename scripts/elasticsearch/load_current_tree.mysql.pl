@@ -4,12 +4,17 @@ use strict;
 use warnings;
 use Getopt::Long;
 use File::stat;
+use Net::FTP;
+use IO::Pipe;
 use DBI;
 
 my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
 my $current_tree = '/nfs/1000g-archive/vol1/ftp/current.tree';
+my $ftp_current_tree = '/vol1/ftp/current.tree';
+my $ftp_host= 'ftp.1000genomes.ebi.ac.uk';
 my $root = 'ftp://ftp.1000genomes.ebi.ac.uk/vol1/';
 my $check_timestamp;
+my $use_ftp;
 
 &GetOptions(
   'current_tree=s' => \$current_tree,
@@ -20,15 +25,30 @@ my $check_timestamp;
   'dbhost=s'      => \$dbhost,
   'dbname=s'      => \$dbname,
   'check_timestamp!' => \$check_timestamp,
+
+  'ftp!'        => \$use_ftp,
+  'ftphost=s'   => \$ftp_host,
+  'ftp_current_tree=s'   => \$ftp_current_tree,
 );
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
 
-my $st = stat($current_tree) or die "could not stat $current_tree $!";
+my $ftp;
+my $mtime;
+if ($use_ftp) {
+  $ftp = Net::FTP->new($ftp_host) or die "cannot connect to $ftp_host $@";
+  $ftp->login("anonymous",'-anonymous@') or die "Cannot login ", $ftp->message;
+  $mtime = $ftp->mdtm($ftp_current_tree) or die "could not get mtime", $ftp->message;
+}
+else {
+  my $st = stat($current_tree) or die "could not stat $current_tree $!";
+  $mtime = $st->mtime;
+}
+
 if ($check_timestamp) {
   my $timestamp_sql = 'SELECT count(*) AS loaded FROM current_tree_log WHERE current_tree_mtime = FROM_UNIXTIME(?) AND loaded_into_db IS NOT NULL';
   my $sth_timestamp = $dbh->prepare($timestamp_sql) or die $dbh->errstr;
-  $sth_timestamp->bind_param(1, $st->mtime);
+  $sth_timestamp->bind_param(1, $mtime);
   $sth_timestamp->execute() or die $sth_timestamp->errstr;
   my $row = $sth_timestamp->fetchrow_hashref();
   exit if $row && $row->{loaded};
@@ -53,7 +73,32 @@ my $sth_update = $dbh->prepare($update_file_sql) or die $dbh->errstr;
 my $sth_log = $dbh->prepare($log_sql) or die $dbh->errstr;
 $sth_reset->execute() or die $sth_reset->errstr;
 
-open my $fh, '<', $current_tree or die "could not open current_tree $!";
+my $fh;
+my $fork_pid;
+if ($use_ftp) {
+  $fh = IO::Pipe->new();
+  $fork_pid = fork();
+  if ($fork_pid) { #parent
+    $fh->reader();
+  }
+  elsif (defined $fork_pid) { #child
+    $fh->writer();
+    eval{$ftp->get($ftp_current_tree, $fh) or die "could not get $ftp_current_tree ", $ftp->message;};
+    if (my $error = $@) {
+      $fh->close;
+      die $error;
+    }
+    $fh->close;
+    exit(0);
+  }
+  else {
+    die "error forking: $!";
+  }
+}
+else {
+  open $fh, '<', $current_tree or die "could not open current_tree $!";
+}
+
 LINE:
 while (my $line = <$fh>) {
   my @split_line = split("\t", $line);
@@ -78,7 +123,12 @@ while (my $line = <$fh>) {
 }
 close $fh;
 
-$sth_log->bind_param(1, $st->mtime);
+if ($use_ftp) {
+  waitpid($fork_pid, 0);
+  exit($?) if($?);
+}
+
+$sth_log->bind_param(1, $mtime);
 $sth_log->execute() or die $sth_log->errstr;
 
 $dbh->commit;
