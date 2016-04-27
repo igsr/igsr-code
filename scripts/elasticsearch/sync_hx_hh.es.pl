@@ -61,6 +61,7 @@ eval{$es_from->snapshot->create(
     wait_for_completion => 1,
     body => {
         indices => $es_index_name,
+        include_global_state => 0,
     }
 );};
 if (my $error = $@) {
@@ -81,6 +82,7 @@ foreach my $es (@es_to) {
     wait_for_completion => 1,
     body => {
         indices => $es_index_name,
+        include_global_state => 0,
     }
   );};
   if (my $error = $@) {
