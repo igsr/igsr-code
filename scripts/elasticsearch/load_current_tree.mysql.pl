@@ -31,7 +31,6 @@ my $use_ftp;
   'ftp_current_tree=s'   => \$ftp_current_tree,
 );
 
-my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
 
 my $ftp;
 my $mtime;
@@ -45,6 +44,34 @@ else {
   $mtime = $st->mtime;
 }
 
+my $fh;
+my $fork_pid;
+if ($use_ftp) {
+  $fh = IO::Pipe->new();
+# Fork must happen before database connection, or else errors occur on closing child process
+  $fork_pid = fork();
+  if ($fork_pid) { #parent
+    $fh->reader();
+  }
+  elsif (defined $fork_pid) { #child
+    $fh->writer();
+    eval{$ftp->get($ftp_current_tree, $fh) or die "could not get $ftp_current_tree ", $ftp->message;};
+    if (my $error = $@) {
+      $fh->close;
+      die $error;
+    }
+    $fh->close;
+    exit(0);
+  }
+  else {
+    die "error forking: $!";
+  }
+}
+else {
+  open $fh, '<', $current_tree or die "could not open current_tree $!";
+}
+
+my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
 if ($check_timestamp) {
   my $timestamp_sql = 'SELECT count(*) AS loaded FROM current_tree_log WHERE current_tree_mtime = FROM_UNIXTIME(?) AND loaded_into_db IS NOT NULL';
   my $sth_timestamp = $dbh->prepare($timestamp_sql) or die $dbh->errstr;
@@ -73,31 +100,6 @@ my $sth_update = $dbh->prepare($update_file_sql) or die $dbh->errstr;
 my $sth_log = $dbh->prepare($log_sql) or die $dbh->errstr;
 $sth_reset->execute() or die $sth_reset->errstr;
 
-my $fh;
-my $fork_pid;
-if ($use_ftp) {
-  $fh = IO::Pipe->new();
-  $fork_pid = fork();
-  if ($fork_pid) { #parent
-    $fh->reader();
-  }
-  elsif (defined $fork_pid) { #child
-    $fh->writer();
-    eval{$ftp->get($ftp_current_tree, $fh) or die "could not get $ftp_current_tree ", $ftp->message;};
-    if (my $error = $@) {
-      $fh->close;
-      die $error;
-    }
-    $fh->close;
-    exit(0);
-  }
-  else {
-    die "error forking: $!";
-  }
-}
-else {
-  open $fh, '<', $current_tree or die "could not open current_tree $!";
-}
 
 LINE:
 while (my $line = <$fh>) {
