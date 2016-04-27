@@ -17,4 +17,7 @@ perl $ES_SCRIPTS/sync_hx_hh.es.pl \
   -to ves-pg-e4 \
   -to ves-oy-e4 \
   -repo hx_hh_sync \
-  -es_index_name igsr_beta
+  -snap_prefix igsr_snap \
+  -snap_index igsr_beta \
+  -snap_index igsr \
+  -restore_index igsr_beta
