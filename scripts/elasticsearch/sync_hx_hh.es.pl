@@ -46,7 +46,7 @@ my @es_to = map {Search::Elasticsearch->new(nodes => "$_:9200", client => '1_0::
 my $es_from = Search::Elasticsearch->new(nodes => "$from_es_host:9200", client => '1_0::Direct');
 
 my ($sec,$min,$hour,$day,$month,$year) = localtime();
-my $snapshot_name = sprintf("%s_%04d%02d%02d%02d%02d%02d", $es_index_name, $year+1900, $month+1, $day, $hour, $min, $sec);
+my $snapshot_name = sprintf("%s_%04d%02d%02d_%02d%02d%02d", $es_index_name, $year+1900, $month+1, $day, $hour, $min, $sec);
 
 my $repo_res = $es_from->snapshot->get_repository(
     repository => $repo,
@@ -75,48 +75,18 @@ foreach my $host (@to_es_host) {
 
 foreach my $es (@es_to) {
 
-  my $get_alias_res = eval{return $es->indices->get_alias(
-    index => $es_index_name,
-  );};
-  if (my $error = $@) {
-    die "error getting index alias for $es_index_name: ".$error->{text};
-  }
-  my @existing_aliases = grep {exists $get_alias_res->{$_}->{aliases}{$es_index_name}} keys %$get_alias_res;
-  die "unexpected number of existing aliases @existing_aliases" if scalar @existing_aliases != 1;
-  my $old_index_name = $existing_aliases[0];
-
   eval{$es->snapshot->restore(
     repository => $repo,
     snapshot => $snapshot_name,
     wait_for_completion => 1,
     body => {
         indices => $es_index_name,
-        rename_pattern => $es_index_name,
-        rename_replacement => $snapshot_name,
     }
   );};
   if (my $error = $@) {
     die "error restoring snapshot $snapshot_name from $repo: ".$error->{text};
   }
 
-  eval{$es->indices->update_aliases(
-    body => {
-      actions => [
-        {add => {alias => $es_index_name, index => $snapshot_name}},
-        {remove => {alias => $es_index_name, index => $old_index_name}},
-      ]
-    }
-  );};
-  if (my $error = $@) {
-    die "error changing alias from $old_index_name to $snapshot_name for index $es_index_name: ".$error->{text};
-  }
-
-  eval{$es->indices->delete(
-    index => $old_index_name,
-  );};
-  if (my $error = $@) {
-    die "error deleting old index $old_index_name: ".$error->{text};
-  }
 }
 
 if ($current_tree_log_id) {
