@@ -128,7 +128,7 @@ if (my $error = $@) {
 $sth_file_update->execute() or die $sth_file_update->errstr;
 
 if ($current_tree_log_id) {
-    my $log_sql = 'UPDATE current_tree_log SET loaded_into_elasticsearch=now(), synced_hx_to_hh=0 WHERE current_tree_log_id=?';
+    my $log_sql = 'UPDATE current_tree_log SET loaded_into_elasticsearch=now() WHERE current_tree_log_id=?';
     my $sth_log = $dbh->prepare($log_sql) or die $dbh->errstr;
     $sth_log->bind_param(1, $current_tree_log_id);
     $sth_log->execute() or die $sth_log->errstr;

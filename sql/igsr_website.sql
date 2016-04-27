@@ -93,6 +93,5 @@ CREATE TABLE current_tree_log (
   current_tree_log_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   current_tree_mtime TIMESTAMP,
   loaded_into_db TIMESTAMP,
-  loaded_into_elasticsearch TIMESTAMP,
-  synced_hx_to_hh TIMESTAMP
+  loaded_into_elasticsearch TIMESTAMP
 );
