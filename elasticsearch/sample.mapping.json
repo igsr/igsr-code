@@ -1,68 +1,84 @@
 {
     "sample": {
         "dynamic": "strict",
+        "_all": {"enabled": false},
         "properties": {
             "biosampleId": {
                 "type": "string"
+                "index": "not_analyzed"
             }, 
             "dataCollections": {
                 "properties": {
                     "alignment": {
-                        "type": "string"
+                        "type": "string",
+                        "index": "not_analyzed"
                     }, 
                     "dataCollection": {
-                        "type": "string"
+                        "type": "string",
+                        "index": "not_analyzed"
                     }, 
                     "dataReusePolicy": {
-                        "type": "string"
+                        "type": "string",
+                        "index": "not_analyzed"
                     }, 
                     "dataTypes": {
-                        "type": "string"
+                        "type": "string",
+                        "index": "not_analyzed"
                     }, 
                     "sequence": {
-                        "type": "string"
+                        "type": "string",
+                        "index": "not_analyzed"
                     }, 
                     "variants": {
-                        "type": "string"
+                        "type": "string",
+                        "index": "not_analyzed"
                     }
                 }
             }, 
             "name": {
-                "type": "string"
+                "type": "string",
+                "index": "not_analyzed"
             }, 
             "population": {
                 "properties": {
                     "code": {
-                        "type": "string"
+                        "type": "string",
+                        "index": "not_analyzed"
                     }, 
                     "description": {
                         "type": "string"
                     }, 
                     "name": {
-                        "type": "string"
+                        "type": "string",
+                        "index": "not_analyzed"
                     }
                 }
             }, 
             "relatedSample": {
                 "properties": {
                     "relatedSampleName": {
-                        "type": "string"
+                        "type": "string",
+                        "index": "not_analyzed"
                     }, 
                     "relationship": {
-                        "type": "string"
+                        "type": "string",
+                        "index": "not_analyzed"
                     }
                 }
             }, 
             "sex": {
-                "type": "string"
+                "type": "string",
+                "index": "not_analyzed"
             }, 
             "superpopulation": {
                 "properties": {
                     "code": {
-                        "type": "string"
+                        "type": "string",
+                        "index": "not_analyzed"
                     }, 
                     "name": {
-                        "type": "string"
+                        "type": "string",
+                        "index": "not_analyzed"
                     }
                 }
             }
