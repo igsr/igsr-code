@@ -27,7 +27,7 @@ my $select_all_samples_sql = 'SELECT s.*, p.code pop_code, p.name pop_name, p.de
     sp.code superpop_code, sp.name superpop_name
     FROM sample s, population p, superpopulation sp
     WHERE s.population_id=p.population_id AND p.superpopulation_id=sp.superpopulation_id';
-my $select_files_sql = 'SELECT dt.code data_type, ag.description analysis_group, dc.description data_collection, dc.reuse_policy
+my $select_files_sql = 'SELECT dt.code data_type, ag.description analysis_group, dc.description data_collection, dc.data_collection_id, dc.reuse_policy
     FROM file f LEFT JOIN data_type dt ON f.data_type_id = dt.data_type_id
     LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id
     INNER JOIN sample_file sf ON sf.file_id=f.file_id
@@ -67,14 +67,15 @@ while (my $row = $sth_sample->fetchrow_hashref()) {
   $sth_files->execute() or die $sth_files->errstr;
   my %data_collections;
   while (my $file_row = $sth_files->fetchrow_hashref()) {
-    $data_collections{$file_row->{data_collection}} //= {
+    $data_collections{$file_row->{data_collection_id}} //= {
       dataCollection => $file_row->{data_collection},
       dataReusePolicy => $file_row->{reuse_policy}
     };
-    $data_collections{$file_row->{data_collection}}{dataTypes}{$file_row->{data_type}} = 1;
-    push(@{$data_collections{$file_row->{data_collection}}{$file_row->{data_type}}}, $file_row->{analysis_group});
+    $data_collections{$file_row->{data_collection_id}}{dataTypes}{$file_row->{data_type}} = 1;
+    push(@{$data_collections{$file_row->{data_collection_id}}{$file_row->{data_type}}}, $file_row->{analysis_group});
   }
-  while (my ($data_collection, $dc_hash) = each %data_collections) {
+  foreach my $data_collection_id (sort keys %data_collections) {
+    my $dc_hash = $data_collections{$data_collection_id};
     $dc_hash->{dataTypes} = [keys %{$dc_hash->{dataTypes}}];
     push(@{$es_doc{dataCollections}}, $dc_hash);
   }

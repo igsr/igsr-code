@@ -33,8 +33,10 @@ my $select_new_files_sql = 'SELECT f.file_id, f.url, f.md5, dt.code data_type, a
 my $select_old_files_sql = 'SELECT f.file_id FROM file f
     WHERE f.foreign_file IS NOT TRUE AND f.in_current_tree IS NOT TRUE AND f.indexed_in_elasticsearch IS TRUE
     ORDER BY file_id';
-my $select_sample_sql = 'SELECT s.name from sample s, sample_file sf
-    WHERE sf.sample_id=s.sample_id AND sf.file_id=?';
+my $select_sample_sql = 'SELECT s.name, p.code AS pop_code from sample s
+    INNER JOIN sample_file sf ON sf.sample_id=s.sample_id 
+    LEFT JOIN population p ON p.population_id=s.population_id
+    WHERE sf.file_id=?';
 my $select_data_collection_sql = 'SELECT dc.description, dc.reuse_policy from data_collection dc, file_data_collection fdc
     WHERE fdc.data_collection_id=dc.data_collection_id AND fdc.file_id=?
     ORDER BY dc.reuse_policy_precedence';
@@ -83,8 +85,15 @@ while (my $row_file = $sth_new_files->fetchrow_hashref()) {
 
   $sth_sample->bind_param(1, $row_file->{file_id});
   $sth_sample->execute() or die $sth_sample->errstr;
+  my %file_populations;
   while (my $row = $sth_sample->fetchrow_hashref()) {
     push(@{$es_doc{samples}}, $row->{name});
+    if ($row->{pop_code}) {
+      $file_populations{$row->{pop_code}} = 1;
+    }
+  }
+  if (scalar keys %file_populations) {
+    $es_doc{populations} = [keys %file_populations];
   }
 
   $sth_data_collection->bind_param(1, $row_file->{file_id});

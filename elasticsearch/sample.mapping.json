@@ -4,7 +4,7 @@
         "_all": {"enabled": false},
         "properties": {
             "biosampleId": {
-                "type": "string"
+                "type": "string",
                 "index": "not_analyzed"
             }, 
             "dataCollections": {
