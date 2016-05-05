@@ -105,7 +105,7 @@ while (my $line = <$fh>) {
 
     $sth_file->bind_param(1, $url);
     $sth_file->bind_param(2, defined $i_md5 ? $split_line[$i_md5] : undef);
-    $sth_file->bind_param(3, scalar $url =~ /ftp\.1000genomes\.ebi\.ac\.uk/);
+    $sth_file->bind_param(3, ! scalar $url =~ /ftp\.1000genomes\.ebi\.ac\.uk/);
     $sth_file->execute() or die $sth_file->errstr;
     my $file_id = $sth_file->{mysql_insertid};
 
