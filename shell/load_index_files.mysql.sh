@@ -108,6 +108,17 @@ perl $ES_SCRIPTS/load_index_file.mysql.pl \
   -dbpass $RESEQTRACK_PASS
 
 perl $ES_SCRIPTS/load_index_file.mysql.pl \
+  -file /nfs/1000g-archive/vol1/ftp/data_collections/hgsv_sv_discovery/smrt.sequence.index \
+  -data_collection hgsv_sv_discovery \
+  -data_type sequence \
+  -use_column_headers \
+  -url_column ENA_FILE_PATH \
+  -md5_column MD5SUM \
+  -sample_column SAMPLE_NAME \
+  -analysis_group_column ANALYSIS_GROUP \
+  -dbpass $RESEQTRACK_PASS
+
+perl $ES_SCRIPTS/load_index_file.mysql.pl \
   -file /nfs/1000g-archive/vol1/ftp/data_collections/illumina_platinum_pedigree/illumina_platinum_ped.sequence.index \
   -data_collection illumina_platinum_ped \
   -data_type sequence \
