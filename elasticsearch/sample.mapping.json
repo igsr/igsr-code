@@ -11,6 +11,7 @@
                 "properties": {
                     "alignment": {
                         "type": "string",
+                        "copy_to": "dataCollections._analysisGroups",
                         "index": "not_analyzed"
                     }, 
                     "dataCollection": {
@@ -27,12 +28,18 @@
                     }, 
                     "sequence": {
                         "type": "string",
+                        "copy_to": "dataCollections._analysisGroups",
                         "index": "not_analyzed"
                     }, 
                     "variants": {
                         "type": "string",
+                        "copy_to": "dataCollections._analysisGroups",
                         "index": "not_analyzed"
-                    }
+                    },
+                    "_analysisGroups": {
+                        "type": "string",
+                        "index": "not_analyzed"
+                    } 
                 }
             }, 
             "name": {
