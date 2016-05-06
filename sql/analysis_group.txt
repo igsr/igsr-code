@@ -1,5 +1,5 @@
 exome	Exome
-exon_targetted	Targetted exon
+exon_targetted	Targeted exon
 high_coverage	High coverage WGS
 low_coverage	Low coverage WGS
 strand_specific_rna	Strand specific RNA-seq
