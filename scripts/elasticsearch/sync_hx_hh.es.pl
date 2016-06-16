@@ -31,8 +31,8 @@ if (!scalar @snap_indices) {
   @snap_indices = ('igsr', 'igsr_beta');
 }
 
-my @es_to = map {Search::Elasticsearch->new(nodes => "$_:9200", client => '1_0::Direct')} @to_es_host;
-my $es_from = Search::Elasticsearch->new(nodes => "$from_es_host:9200", client => '1_0::Direct');
+my @es_to = map {Search::Elasticsearch->new(nodes => "$_:9200", client => '1_0::Direct', request_timeout => 120)} @to_es_host;
+my $es_from = Search::Elasticsearch->new(nodes => "$from_es_host:9200", client => '1_0::Direct', request_timeout => 120);
 
 my ($sec,$min,$hour,$day,$month,$year) = localtime();
 my $snapshot_suffix = sprintf("_%04d%02d%02d_%02d%02d%02d", $year+1900, $month+1, $day, $hour, $min, $sec);
