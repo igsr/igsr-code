@@ -31,19 +31,22 @@ if (!scalar @snap_indices) {
   @snap_indices = ('igsr', 'igsr_beta');
 }
 
-my @es_to = map {Search::Elasticsearch->new(nodes => "$_:9200", client => '1_0::Direct', request_timeout => 120)} @to_es_host;
+my %es_to;
+foreach my $to_es_host (@to_es_host) {
+  $es_to{$to_es_host} = Search::Elasticsearch->new(nodes => "$to_es_host:9200", client => '1_0::Direct', request_timeout => 120);
+}
 my $es_from = Search::Elasticsearch->new(nodes => "$from_es_host:9200", client => '1_0::Direct', request_timeout => 120);
 
 my ($sec,$min,$hour,$day,$month,$year) = localtime();
 my $snapshot_suffix = sprintf("_%04d%02d%02d_%02d%02d%02d", $year+1900, $month+1, $day, $hour, $min, $sec);
 my $snapshot_name = $snapshot_prefix.$snapshot_suffix;
 
-my $repo_res = $es_from->snapshot->get_repository(
+my $repo_res_from = $es_from->snapshot->get_repository(
     repository => $repo,
 );
-my $repo_dir = $repo_res->{$repo}{settings}{location} || die "did not get repo directory for $repo";
-$repo_dir .= '/'; # important for rsync
-$repo_dir =~ s{//}{/}g;
+my $repo_dir_from = $repo_res_from->{$repo}{settings}{location} || die "did not get repo directory for $repo";
+$repo_dir_from .= '/'; # important for rsync
+$repo_dir_from =~ s{//}{/}g;
 
 eval{$es_from->snapshot->create(
     repository => $repo,
@@ -58,16 +61,21 @@ if (my $error = $@) {
   die "error creating snapshot $snapshot_name in $repo for indices @snap_indices: ".$error->{text};
 }
 
-my $rsync = File::Rsync->new({archive=>1});
-foreach my $host (@to_es_host) {
-  $rsync->exec({archive => 1, src => $repo_dir, dest => "$host:$repo_dir"})
-      or die join("\n", "error syncing $repo_dir to $host", $rsync->err);
-}
+while (my ($to_es_host, $es_to) = each %es_to) {
+   my $repo_res = $es_to->snapshot->get_repository(
+      repository => $repo,
+  );
+  my $repo_dir_to = $repo_res->{$repo}{settings}{location} || die "did not get repo directory for $repo";
+  $repo_dir_to .= '/'; # important for rsync
+  $repo_dir_to =~ s{//}{/}g;
 
-foreach my $es (@es_to) {
+  my $rsync = File::Rsync->new({archive=>1});
+  $rsync->exec({archive => 1, src => $repo_dir_from, dest => "$to_es_host:$repo_dir_to"})
+      or die join("\n", "error syncing $repo_dir_from to $to_es_host:$repo_dir_to", $rsync->err);
+
   foreach my $restore_index (@restore_indices) {
 
-    my $get_alias_res = eval{return $es->indices->get_alias(
+    my $get_alias_res = eval{return $es_to->indices->get_alias(
       index => $restore_index,
     );};
     if (my $error = $@) {
@@ -78,7 +86,7 @@ foreach my $es (@es_to) {
     my $old_index_name = $existing_aliases[0];
 
     my $new_index_name = $restore_index.$snapshot_suffix;
-    eval{$es->snapshot->restore(
+    eval{$es_to->snapshot->restore(
       repository => $repo,
       snapshot => $snapshot_name,
       wait_for_completion => 1,
@@ -93,7 +101,7 @@ foreach my $es (@es_to) {
       die "error restoring snapshot $snapshot_name from $repo for $restore_index: ".$error->{text};
     }
 
-    eval{$es->indices->update_aliases(
+    eval{$es_to->indices->update_aliases(
       body => {
         actions => [
           {add => {alias => $restore_index, index => $new_index_name}},
@@ -105,7 +113,7 @@ foreach my $es (@es_to) {
       die "error changing alias from $old_index_name to $new_index_name for index $restore_index: ".$error->{text};
     }
 
-    eval{$es->indices->delete(
+    eval{$es_to->indices->delete(
       index => $old_index_name,
     );};
     if (my $error = $@) {
