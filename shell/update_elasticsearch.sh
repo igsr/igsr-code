@@ -12,12 +12,11 @@ perl $ES_SCRIPTS/load_files.es.pl \
   -es_host ves-hx-e4 \
   -es_index_name igsr_beta
 
-perl $ES_SCRIPTS/sync_hx_hh.es.pl \
-  -from_es_host ves-hx-e4 \
+perl $GCA_ELASTICSEARCH/scripts/sync_hx_hh.es.pl \
+  -from ves-hx-e4 \
   -to ves-pg-e4 \
   -to ves-oy-e4 \
-  -repo hx_hh_sync \
-  -snapshot_prefix igsr_snap \
+  -repo igsr_repo \
   -snap_index igsr_beta \
   -snap_index igsr \
-  -restore_index igsr_beta
+  -restore_only igsr_beta
