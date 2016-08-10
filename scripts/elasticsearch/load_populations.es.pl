@@ -22,9 +22,11 @@ my $es_index_name = 'igsr';
 my @es = map {Search::Elasticsearch->new(nodes => $_, client => '1_0::Direct')} @es_host;
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
-my $select_all_pops_sql = 'SELECT p.*, sp.code superpop_code, sp.name superpop_name
-    FROM population p, superpopulation sp
-    WHERE p.superpopulation_id=sp.superpopulation_id';
+my $select_all_pops_sql = 'SELECT p.*, count(s.sample_id) num_samples, sp.code superpop_code, sp.name superpop_name
+    FROM population p, superpopulation sp, sample s
+    WHERE p.superpopulation_id=sp.superpopulation_id
+    AND p.population_id=s.population_id
+    GROUP BY p.population_id';
 my $select_files_sql = 'SELECT dt.code data_type, ag.description analysis_group, dc.description data_collection, dc.data_collection_id, dc.reuse_policy
     FROM file f LEFT JOIN data_type dt ON f.data_type_id = dt.data_type_id
     LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id
@@ -47,6 +49,9 @@ while (my $row = $sth_population->fetchrow_hashref()) {
     superpopulation => {
       code => $row->{superpop_code},
       name => $row->{superpop_name},
+    },
+    samples => {
+      count => $row->{num_samples},
     },
   );
 
