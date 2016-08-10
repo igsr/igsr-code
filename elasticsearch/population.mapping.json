@@ -73,6 +73,13 @@
                         "index": "not_analyzed"
                     }
                 }
+            },
+            "samples": {
+                "properties": {
+                    "count": {
+                        "type": "short"
+                    } 
+                }
             }
         }
     }
