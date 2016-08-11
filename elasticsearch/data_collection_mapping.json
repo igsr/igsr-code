@@ -31,7 +31,10 @@
                         "type": "short"
                     } 
                 }
-            }
+            },
+            "displayOrder": {
+                "type": "short"
+            } 
         }
     }
 }

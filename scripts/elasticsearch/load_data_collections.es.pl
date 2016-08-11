@@ -37,6 +37,7 @@ while (my $row = $sth_dcs->fetchrow_hashref()) {
     title => $row->{title},
     shortTitle => $row->{short_title},
     dataReusePolicy => $row->{reuse_policy},
+    displayOrder => $row->{display_order},
   );
 
   my $es_id = lc($row->{short_title});

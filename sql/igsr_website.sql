@@ -29,6 +29,7 @@ CREATE TABLE data_collection (
   code VARCHAR(255) NOT NULL,
   title VARCHAR(256) NOT NULL,
   short_title VARCHAR(256) NOT NULL,
+  display_order TINYINT UNSIGNED,
   reuse_policy VARCHAR(256),
   reuse_policy_precedence TINYINT UNSIGNED,
   description_markdown_url VARCHAR(256),
