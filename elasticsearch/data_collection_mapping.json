@@ -1,0 +1,37 @@
+{
+    "data_collection": {
+        "dynamic": "strict",
+        "_all": {"enabled": false},
+        "properties": {
+            "title": {
+                "type": "string",
+                "index": "not_analyzed"
+            }, 
+            "shortTitle": {
+                "type": "string",
+                "index": "not_analyzed"
+            }, 
+            "dataReusePolicy": {
+                "type": "string",
+                "index": "not_analyzed"
+            }, 
+            "description": {
+                "type": "string"
+            }, 
+            "samples": {
+                "properties": {
+                    "count": {
+                        "type": "short"
+                    } 
+                }
+            },
+            "populations": {
+                "properties": {
+                    "count": {
+                        "type": "short"
+                    } 
+                }
+            }
+        }
+    }
+}
