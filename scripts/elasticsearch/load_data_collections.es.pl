@@ -40,7 +40,7 @@ while (my $row = $sth_dcs->fetchrow_hashref()) {
   );
 
   my $es_id = lc($row->{short_title});
-  $es_id =~ s/ /_/g;
+  $es_id =~ s/ /-/g;
 
   $sth_samples->bind_param(1, $row->{data_collection_id});
   $sth_samples->execute() or die $sth_samples->errstr;
