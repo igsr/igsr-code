@@ -1,5 +1,5 @@
 {
-    "data_collection": {
+    "data-collection": {
         "dynamic": "strict",
         "_all": {"enabled": false},
         "properties": {

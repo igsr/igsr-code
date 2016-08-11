@@ -63,7 +63,7 @@ while (my $row = $sth_dcs->fetchrow_hashref()) {
   foreach my $es (@es) {
     eval{$es->index(
       index => $es_index_name,
-      type => 'data_collection',
+      type => 'data-collection',
       id => $es_id,
       body => \%es_doc,
     );};
