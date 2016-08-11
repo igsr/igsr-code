@@ -4,7 +4,6 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Search::Elasticsearch;
-use LWP::Simple qw();
 use DBI;
 
 my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1kro', 4197, undef);
@@ -59,12 +58,6 @@ while (my $row = $sth_dcs->fetchrow_hashref()) {
   }
   else {
     $es_doc{populations}{count} = 0;
-  }
-
-  if (my $url = $row->{description_markdown_url}) {
-    my $content = LWP::Simple::get($url);
-    die "could not get $url" if !$content;
-    $es_doc{description} = $content;
   }
 
   foreach my $es (@es) {

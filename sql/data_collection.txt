@@ -1,5 +1,5 @@
-1000genomes	1000 Genomes on GRCh38	GRCh38	1	http://www.1000genomes.org/about#g1k_data_reuse	1	
-hgsv_sv_discovery	The Human Genome Structural Variation Consortium	Structural variation	5	https://github.com/igsr/1000Genomes_data_indexes/blob/master/data_collections/hgsv_sv_discovery/README_hgsvc_datareuse_statement.md	2	https://raw.githubusercontent.com/igsr/gca_1000genomes_website/master/_data_collections/hgsv.md
-illumina_platinum_ped	Illumina Platinum pedigree	Platinum pedigree	4	http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/illumina_platinum_pedigree/README_illumina_platinum_pedigree.md	2	https://raw.githubusercontent.com/igsr/gca_1000genomes_website/master/_data_collections/illumina-platinum-pedigree.md
-phase3	1000 Genomes phase 3 release	Phase 3	2	http://www.1000genomes.org/about#g1k_data_reuse	1	
-phase1	1000 Genomes phase 1 release	Phase 1	3	http://www.1000genomes.org/about#g1k_data_reuse	1	
+1000genomes	1000 Genomes on GRCh38	GRCh38	1	http://www.1000genomes.org/about#g1k_data_reuse	1
+hgsv_sv_discovery	The Human Genome Structural Variation Consortium	Structural variation	5	https://github.com/igsr/1000Genomes_data_indexes/blob/master/data_collections/hgsv_sv_discovery/README_hgsvc_datareuse_statement.md	2
+illumina_platinum_ped	Illumina Platinum pedigree	Platinum pedigree	4	http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/illumina_platinum_pedigree/README_illumina_platinum_pedigree.md	2
+phase3	1000 Genomes phase 3 release	Phase 3	2	http://www.1000genomes.org/about#g1k_data_reuse	1
+phase1	1000 Genomes phase 1 release	Phase 1	3	http://www.1000genomes.org/about#g1k_data_reuse	1
