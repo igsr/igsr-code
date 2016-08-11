@@ -27,9 +27,11 @@ CREATE TABLE population (
 CREATE TABLE data_collection (
   data_collection_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   code VARCHAR(255) NOT NULL,
-  description VARCHAR(256) NOT NULL,
+  title VARCHAR(256) NOT NULL,
+  short_title VARCHAR(256) NOT NULL,
   reuse_policy VARCHAR(256),
   reuse_policy_precedence TINYINT UNSIGNED,
+  description_markdown_url VARCHAR(256),
   UNIQUE(code)
 );
 

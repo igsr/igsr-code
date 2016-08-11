@@ -27,7 +27,7 @@ my $select_all_pops_sql = 'SELECT p.*, count(s.sample_id) num_samples, sp.code s
     LEFT JOIN sample s on p.population_id=s.population_id
     INNER JOIN superpopulation sp on p.superpopulation_id=sp.superpopulation_id
     GROUP BY p.population_id';
-my $select_files_sql = 'SELECT dt.code data_type, ag.description analysis_group, dc.description data_collection, dc.data_collection_id, dc.reuse_policy
+my $select_files_sql = 'SELECT dt.code data_type, ag.description analysis_group, dc.title data_collection, dc.data_collection_id, dc.reuse_policy
     FROM file f LEFT JOIN data_type dt ON f.data_type_id = dt.data_type_id
     LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id
     INNER JOIN sample_file sf ON sf.file_id=f.file_id

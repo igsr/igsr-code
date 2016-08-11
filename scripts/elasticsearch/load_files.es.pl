@@ -37,7 +37,7 @@ my $select_sample_sql = 'SELECT s.name, p.code AS pop_code from sample s
     INNER JOIN sample_file sf ON sf.sample_id=s.sample_id 
     LEFT JOIN population p ON p.population_id=s.population_id
     WHERE sf.file_id=?';
-my $select_data_collection_sql = 'SELECT dc.description, dc.reuse_policy from data_collection dc, file_data_collection fdc
+my $select_data_collection_sql = 'SELECT dc.title, dc.reuse_policy from data_collection dc, file_data_collection fdc
     WHERE fdc.data_collection_id=dc.data_collection_id AND fdc.file_id=?
     ORDER BY dc.reuse_policy_precedence';
 my $update_file_sql = 'UPDATE file SET indexed_in_elasticsearch = (foreign_file IS TRUE OR in_current_tree IS TRUE)';
@@ -100,7 +100,7 @@ while (my $row_file = $sth_new_files->fetchrow_hashref()) {
   $sth_data_collection->execute() or die $sth_data_collection->errstr;
   while (my $row = $sth_data_collection->fetchrow_hashref()) {
     $es_doc{dataReusePolicy} //= $row->{reuse_policy};
-    push(@{$es_doc{dataCollections}}, $row->{description});
+    push(@{$es_doc{dataCollections}}, $row->{title});
   }
 
   eval {$es_bulk->index({
