@@ -29,6 +29,30 @@
                     } 
                 }
             },
+            "alignment": {
+                "type": "string",
+                "copy_to": "_analysisGroups",
+                "index": "not_analyzed"
+            }, 
+            "dataTypes": {
+                "type": "string",
+                "index": "not_analyzed"
+            }, 
+            "sequence": {
+                "type": "string",
+                "copy_to": "_analysisGroups",
+                "index": "not_analyzed"
+            }, 
+            "variants": {
+                "type": "string",
+                "copy_to": "_analysisGroups",
+                "index": "not_analyzed"
+            },
+            "_analysisGroups": {
+                "type": "string",
+                "index": "not_analyzed",
+                "store": true
+            },
             "displayOrder": {
                 "type": "short"
             } 

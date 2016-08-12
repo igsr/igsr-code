@@ -25,9 +25,16 @@ my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $
 my $select_all_dcs_sql = 'SELECT * from data_collection';
 my $count_samples_sql = 'SELECT count(samples.sample_id) AS num_samples FROM (SELECT DISTINCT sf.sample_id FROM sample_file sf, file_data_collection fdc WHERE sf.file_id=fdc.file_id AND fdc.data_collection_id=?) AS samples';
 my $count_pops_sql = 'SELECT count(*) AS num_populations FROM (SELECT DISTINCT s.population_id FROM sample_file sf, file_data_collection fdc, sample s WHERE s.sample_id=sf.sample_id AND sf.file_id=fdc.file_id AND fdc.data_collection_id=?) AS populations';
+my $select_files_sql = 'SELECT dt.code data_type, ag.description analysis_group
+    FROM file f LEFT JOIN data_type dt ON f.data_type_id = dt.data_type_id
+    LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id
+    INNER JOIN file_data_collection fdc ON f.file_id=fdc.file_id
+    WHERE fdc.data_collection_id=?
+    GROUP BY dt.data_type_id, ag.analysis_group_id';
 my $sth_dcs = $dbh->prepare($select_all_dcs_sql) or die $dbh->errstr;
 my $sth_samples = $dbh->prepare($count_samples_sql) or die $dbh->errstr;
 my $sth_pops = $dbh->prepare($count_pops_sql) or die $dbh->errstr;
+my $sth_files = $dbh->prepare($select_files_sql) or die $dbh->errstr;
 
 $sth_dcs->execute() or die $sth_dcs->errstr;
 FILE:
@@ -59,6 +66,14 @@ while (my $row = $sth_dcs->fetchrow_hashref()) {
   else {
     $es_doc{populations}{count} = 0;
   }
+
+  $sth_files->bind_param(1, $row->{data_collection_id});
+  $sth_files->execute() or die $sth_files->errstr;
+  while (my $file_row = $sth_files->fetchrow_hashref()) {
+    $es_doc{dataTypes}{$file_row->{data_type}} = 1;
+    push(@{$es_doc{$file_row->{data_type}}}, $file_row->{analysis_group});
+  }
+  $es_doc{dataTypes} = [keys %{$es_doc{dataTypes}}];
 
   foreach my $es (@es) {
     eval{$es->index(
