@@ -60,7 +60,6 @@ while (my $row = $sth_population->fetchrow_hashref()) {
   my %data_collections;
   while (my $file_row = $sth_files->fetchrow_hashref()) {
     $data_collections{$file_row->{data_collection_id}} //= {
-      dataCollection => $file_row->{data_collection},
       title => $file_row->{data_collection},
       dataReusePolicy => $file_row->{reuse_policy}
     };

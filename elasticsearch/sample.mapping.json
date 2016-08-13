@@ -14,10 +14,6 @@
                         "copy_to": "dataCollections._analysisGroups",
                         "index": "not_analyzed"
                     }, 
-                    "dataCollection": {
-                        "type": "string",
-                        "index": "not_analyzed"
-                    }, 
                     "dataReusePolicy": {
                         "type": "string",
                         "index": "not_analyzed"
