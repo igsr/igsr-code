@@ -9,7 +9,7 @@ my $index_file = '/nfs/1000g-archive/vol1/ftp/data_collections/1000_genomes_proj
 my $data_collection = '1000genomes';
 my $data_type = 'sequence';
 my $analysis_group;
-my ($use_column_headers, $infer_sample);
+my ($use_column_headers, $infer_sample, $infer_data_type);
 my (@url_column, @md5_column);
 my ($analysis_group_column, $withdrawn_column, $sample_column);
 my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
@@ -35,6 +35,7 @@ my $root = '';
 
   'use_column_headers' => \$use_column_headers,
   'infer_sample' => \$infer_sample,
+  'infer_data_type' => \$infer_data_type,
 );
 die "did not get url column on command line" if ! scalar @url_column;
 die "need one md5 column for each url column" if @md5_column && (scalar @url_column != scalar @md5_column);
@@ -74,9 +75,9 @@ if ($use_column_headers) {
     }
     @i_url = map {$cols{uc($_)}} @url_column;
     @i_md5 = map {$cols{uc($_)}} @md5_column;
-    $i_analysis_group = $analysis_group_column ? $cols{$analysis_group_column} : undef;
-    $i_withdrawn = $withdrawn_column ? $cols{$withdrawn_column} : undef;
-    $i_sample = $sample_column ? $cols{$sample_column} : undef;
+    $i_analysis_group = $analysis_group_column ? $cols{uc($analysis_group_column)} : undef;
+    $i_withdrawn = $withdrawn_column ? $cols{uc($withdrawn_column)} : undef;
+    $i_sample = $sample_column ? $cols{uc($sample_column)} : undef;
     last LINE;
   }
 }
@@ -115,6 +116,13 @@ while (my $line = <$fh>) {
       $sth_analysis_group->bind_param(1, $file_analysis_group);
       $sth_analysis_group->bind_param(2, $file_id);
       $sth_analysis_group->execute() or die $sth_analysis_group->errstr;
+    }
+
+    if ($infer_data_type) {
+      $data_type = $url =~ /\.vcf(?:\.gz)?$/ ? 'alignments'
+                : $url =~ /\.bam(?:\.[a-z]+)?$/ ? 'alignment'
+                : $url =~ /\.cram(?:\.[a-z]+)?$/ ? 'alignment'
+                : 'sequence';
     }
 
     if ($data_type) {
