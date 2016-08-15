@@ -119,7 +119,7 @@ while (my $line = <$fh>) {
     }
 
     if ($infer_data_type) {
-      $data_type = $url =~ /\.vcf(?:\.gz)?$/ ? 'alignments'
+      $data_type = $url =~ /\.vcf(?:\.gz)?(?:\.tbi)?$/ ? 'variants'
                 : $url =~ /\.bam(?:\.[a-z]+)?$/ ? 'alignment'
                 : $url =~ /\.cram(?:\.[a-z]+)?$/ ? 'alignment'
                 : 'sequence';
