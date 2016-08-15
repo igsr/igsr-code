@@ -1,0 +1,19 @@
+{
+    "analysis-group": {
+        "dynamic": "strict",
+        "_all": {"enabled": false},
+        "properties": {
+            "title": {
+                "type": "string",
+                "index": "not_analyzed"
+            }, 
+            "shortTitle": {
+                "type": "string",
+                "index": "not_analyzed"
+            }, 
+            "displayOrder": {
+                "type": "short"
+            } 
+        }
+    }
+}

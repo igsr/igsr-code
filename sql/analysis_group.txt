@@ -1,16 +1,16 @@
-exome	Exome
-exon_targetted	Targeted exon
-high_coverage	High coverage WGS
-low_coverage	Low coverage WGS
-strand_specific_rna	Strand specific RNA-seq
-3.5kb_jump	3.5kb jumping library
-HiC	HiC
-pcr_free_high	PCR-free high coverage
-strand-seq	Strand-seq
-sv_7kb_mate	7kb mate pair libray
-sv_smrt	Single molecule real time (SMRT)
-illumina_platinum_ped	Illumina platinum pedigree
-cg	Complete Genomics
-pilot_data	Pilot study data
-integrated_calls	Integrated variant call sets
-hd_genotype_chip	HD genotype chip
+exome	Exome	Exome	1
+exon_targetted	Targeted exon	Targeted exon	6
+high_coverage	High coverage WGS	High cov WGS	3
+low_coverage	Low coverage WGS	Low cov WGS	2
+strand_specific_rna	Strand specific RNA-seq	Strand RNA-seq	8
+3.5kb_jump	3.5kb jumping library	3.5kb jump library	10
+HiC	HiC	HiC	14
+pcr_free_high	PCR-free high coverage	PCR-free high cov	13
+strand-seq	Strand-seq	Strand-seq	9
+sv_7kb_mate	7kb mate pair libray	7kb mate pair	11
+sv_smrt	Single molecule real time (SMRT)	SMRT	12
+illumina_platinum_ped	Illumina platinum pedigree	Platinum pedigree	7
+cg	Complete Genomics	Complete Genomics	5
+pilot_data	Pilot study data		
+integrated_calls	Integrated variant call sets		
+hd_genotype_chip	HD genotype chip	HD genotype chip	4

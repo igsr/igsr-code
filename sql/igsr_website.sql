@@ -39,6 +39,8 @@ CREATE TABLE analysis_group (
   analysis_group_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   code VARCHAR(255) NOT NULL,
   description VARCHAR(256) NOT NULL,
+  short_title VARCHAR(255) NOT NULL,
+  table_display_order TINYINT UNSIGNED,
   UNIQUE(code)
 );
 

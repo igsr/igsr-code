@@ -8,8 +8,8 @@ use DBI;
 use feature qw(fc);
 
 my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1kro', 4197, undef);
-my @es_host;
-my $es_index_name = 'igsr';
+my $es_host = 'ves-hx-e4:9200';
+my $es_index_name = 'igsr_beta';
 
 &GetOptions(
   'dbpass=s'      => \$dbpass,
@@ -17,10 +17,10 @@ my $es_index_name = 'igsr';
   'dbuser=s'      => \$dbuser,
   'dbhost=s'      => \$dbhost,
   'dbname=s'      => \$dbname,
-  'es_host=s' =>\@es_host,
+  'es_host=s' =>\$es_host,
   'es_index_name=s' =>\$es_index_name,
 );
-my @es = map {Search::Elasticsearch->new(nodes => $_, client => '1_0::Direct')} @es_host;
+my $es = Search::Elasticsearch->new(nodes => $es_host, client => '1_0::Direct');
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
 my $select_all_samples_sql = 'SELECT s.*, p.code pop_code, p.name pop_name, p.description pop_description,
@@ -41,6 +41,7 @@ my $sth_files = $dbh->prepare($select_files_sql) or die $dbh->errstr;
 my $sth_relationship = $dbh->prepare($select_relationship_sql) or die $dbh->errstr;
 
 $sth_sample->execute() or die $sth_sample->errstr;
+my %indexed_samples;
 FILE:
 while (my $row = $sth_sample->fetchrow_hashref()) {
   my %es_doc = (
@@ -86,15 +87,30 @@ while (my $row = $sth_sample->fetchrow_hashref()) {
     push(@{$es_doc{relatedSample}}, {relatedSampleName => $relationship_row->{name}, relationship => $relationship_row->{type}});
   }
 
-  foreach my $es (@es) {
-    eval{$es->index(
-      index => $es_index_name,
-      type => 'sample',
-      id => $row->{name},
-      body => \%es_doc,
-    );};
-    if (my $error = $@) {
-      die "error indexing sample in $es_index_name index:".$error->{text};
-    }
+  eval{$es->index(
+    index => $es_index_name,
+    type => 'sample',
+    id => $row->{name},
+    body => \%es_doc,
+  );};
+  if (my $error = $@) {
+    die "error indexing sample in $es_index_name index:".$error->{text};
   }
+  $indexed_samples{$row->{name}} = 1;
+}
+
+my $scroll = $es->scroll_helper(
+    index => $es_index_name,
+    type => 'sample',
+    search_type => 'scan',
+    size => 500,
+);
+SCROLL:
+while (my $es_doc = $scroll->next) {
+  next SCROLL if $indexed_samples{$es_doc->{_id}};
+  $es->delete(
+    index => $es_index_name,
+    type => 'sample',
+    id => $es_doc->{_id},
+  );
 }

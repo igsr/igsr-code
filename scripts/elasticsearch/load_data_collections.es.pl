@@ -7,7 +7,7 @@ use Search::Elasticsearch;
 use DBI;
 
 my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1kro', 4197, undef);
-my @es_host;
+my $es_host = 'ves-hx-e4:9200';
 my $es_index_name = 'igsr_beta';
 
 &GetOptions(
@@ -16,10 +16,10 @@ my $es_index_name = 'igsr_beta';
   'dbuser=s'      => \$dbuser,
   'dbhost=s'      => \$dbhost,
   'dbname=s'      => \$dbname,
-  'es_host=s' =>\@es_host,
+  'es_host=s' =>\$es_host,
   'es_index_name=s' =>\$es_index_name,
 );
-my @es = map {Search::Elasticsearch->new(nodes => $_, client => '1_0::Direct')} @es_host;
+my $es = Search::Elasticsearch->new(nodes => $es_host, client => '1_0::Direct');
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
 my $select_all_dcs_sql = 'SELECT * from data_collection';
@@ -37,7 +37,7 @@ my $sth_pops = $dbh->prepare($count_pops_sql) or die $dbh->errstr;
 my $sth_files = $dbh->prepare($select_files_sql) or die $dbh->errstr;
 
 $sth_dcs->execute() or die $sth_dcs->errstr;
-FILE:
+my %indexed_dcs;
 while (my $row = $sth_dcs->fetchrow_hashref()) {
   my %es_doc = (
     title => $row->{title},
@@ -75,15 +75,30 @@ while (my $row = $sth_dcs->fetchrow_hashref()) {
   }
   $es_doc{dataTypes} = [keys %{$es_doc{dataTypes}}];
 
-  foreach my $es (@es) {
-    eval{$es->index(
-      index => $es_index_name,
-      type => 'data-collection',
-      id => $es_id,
-      body => \%es_doc,
-    );};
-    if (my $error = $@) {
-      die "error indexing data_collection in $es_index_name index:".$error->{text};
-    }
+  eval{$es->index(
+    index => $es_index_name,
+    type => 'data-collection',
+    id => $es_id,
+    body => \%es_doc,
+  );};
+  if (my $error = $@) {
+    die "error indexing data_collection in $es_index_name index:".$error->{text};
   }
+  $indexed_dcs{$es_id} = 1;
+}
+
+my $scroll = $es->scroll_helper(
+    index => $es_index_name,
+    type => 'data-collection',
+    search_type => 'scan',
+    size => 500,
+);
+SCROLL:
+while (my $es_doc = $scroll->next) {
+  next SCROLL if $indexed_dcs{$es_doc->{_id}};
+  $es->delete(
+    index => $es_index_name,
+    type => 'data-collection',
+    id => $es_doc->{_id},
+  );
 }

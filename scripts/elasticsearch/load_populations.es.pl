@@ -7,8 +7,8 @@ use Search::Elasticsearch;
 use DBI;
 
 my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1kro', 4197, undef);
-my @es_host;
-my $es_index_name = 'igsr';
+my $es_host = 'ves-hx-e4:9200';
+my $es_index_name = 'igsr_beta';
 
 &GetOptions(
   'dbpass=s'      => \$dbpass,
@@ -16,10 +16,10 @@ my $es_index_name = 'igsr';
   'dbuser=s'      => \$dbuser,
   'dbhost=s'      => \$dbhost,
   'dbname=s'      => \$dbname,
-  'es_host=s' =>\@es_host,
+  'es_host=s' =>\$es_host,
   'es_index_name=s' =>\$es_index_name,
 );
-my @es = map {Search::Elasticsearch->new(nodes => $_, client => '1_0::Direct')} @es_host;
+my $es = Search::Elasticsearch->new(nodes => $es_host, client => '1_0::Direct');
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
 my $select_all_pops_sql = 'SELECT p.*, count(s.sample_id) num_samples, sp.code superpop_code, sp.name superpop_name
@@ -40,6 +40,7 @@ my $sth_population = $dbh->prepare($select_all_pops_sql) or die $dbh->errstr;
 my $sth_files = $dbh->prepare($select_files_sql) or die $dbh->errstr;
 
 $sth_population->execute() or die $sth_population->errstr;
+my %indexed_pops;
 FILE:
 while (my $row = $sth_population->fetchrow_hashref()) {
   my %es_doc = (
@@ -72,15 +73,30 @@ while (my $row = $sth_population->fetchrow_hashref()) {
     push(@{$es_doc{dataCollections}}, $dc_hash);
   }
 
-  foreach my $es (@es) {
-    eval{$es->index(
-      index => $es_index_name,
-      type => 'population',
-      id => $row->{code},
-      body => \%es_doc,
-    );};
-    if (my $error = $@) {
-      die "error indexing population in $es_index_name index:".$error->{text};
-    }
+  eval{$es->index(
+    index => $es_index_name,
+    type => 'population',
+    id => $row->{code},
+    body => \%es_doc,
+  );};
+  if (my $error = $@) {
+    die "error indexing population in $es_index_name index:".$error->{text};
   }
+  $indexed_pops{$row->{code}} = 1;
+}
+
+my $scroll = $es->scroll_helper(
+    index => $es_index_name,
+    type => 'population',
+    search_type => 'scan',
+    size => 500,
+);
+SCROLL:
+while (my $es_doc = $scroll->next) {
+  next SCROLL if $indexed_pops{$es_doc->{_id}};
+  $es->delete(
+    index => $es_index_name,
+    type => 'population',
+    id => $es_doc->{_id},
+  );
 }

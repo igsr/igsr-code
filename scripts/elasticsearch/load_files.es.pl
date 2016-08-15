@@ -8,7 +8,7 @@ use DBI;
 
 my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
 my $check_timestamp;
-my $es_index_name = 'igsr';
+my $es_index_name = 'igsr_beta';
 my $es_host = 'ves-hx-e4';
 
 &GetOptions(
