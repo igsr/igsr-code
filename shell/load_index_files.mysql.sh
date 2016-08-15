@@ -208,6 +208,7 @@ perl $ES_SCRIPTS/load_index_file.mysql.pl \
   -md5_column 1 \
   -analysis_group cg \
   -infer_sample \
+  -infer_data_type \
   -root ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/ \
   -dbpass $RESEQTRACK_PASS
 
