@@ -32,6 +32,8 @@ CREATE TABLE data_collection (
   display_order TINYINT UNSIGNED,
   reuse_policy VARCHAR(256),
   reuse_policy_precedence TINYINT UNSIGNED,
+  website VARCHAR(256),
+  publication VARCHAR(256),
   UNIQUE(code)
 );
 

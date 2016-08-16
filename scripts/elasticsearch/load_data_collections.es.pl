@@ -45,6 +45,12 @@ while (my $row = $sth_dcs->fetchrow_hashref()) {
     dataReusePolicy => $row->{reuse_policy},
     displayOrder => $row->{display_order},
   );
+  if ($row->{website}) {
+    $es_doc{website} = $row->{website};
+  }
+  if ($row->{publication}) {
+    $es_doc{publication} = $row->{publication};
+  }
 
   my $es_id = lc($row->{short_title});
   $es_id =~ s/ /-/g;

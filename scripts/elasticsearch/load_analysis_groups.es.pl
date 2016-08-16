@@ -33,6 +33,9 @@ while (my $row = $sth_ags->fetchrow_hashref()) {
     shortTitle => $row->{short_title},
     displayOrder => $row->{table_display_order},
   );
+  if ($row->{table_display_order}) {
+    $es_doc{displayOrder} = $row->{table_display_order};
+  }
 
   my $es_id = lc($row->{short_title});
   $es_id =~ s/[^\w]/-/g;
