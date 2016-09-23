@@ -22,7 +22,10 @@ my $es_index_name = 'igsr_beta';
 my $es = Search::Elasticsearch->new(nodes => $es_host, client => '1_0::Direct');
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
-my $select_all_ags_sql = 'SELECT * from analysis_group';
+my $select_all_ags_sql = 'SELECT ag.* from file f
+    INNER JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id
+    INNER JOIN sample_file sf ON sf.file_id=f.file_id
+    GROUP BY ag.analysis_group_id';
 my $sth_ags = $dbh->prepare($select_all_ags_sql) or die $dbh->errstr;
 
 $sth_ags->execute() or die $sth_ags->errstr;
