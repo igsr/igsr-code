@@ -113,7 +113,7 @@ while (my $line = <$fh>) {
   $sth_select->execute() or die $sth_select->errstr;
   if (my $row = $sth_select->fetchrow_hashref()) {
     $sth_update->bind_param(1, $split_line[4]);
-    $sth_update->bind_param(2, $split_line[4] eq $row->{md5} ? $row->{indexed_in_elasticsearch} : 0);
+    $sth_update->bind_param(2, $split_line[4] && $split_line[4] eq $row->{md5} ? $row->{indexed_in_elasticsearch} : 0);
     $sth_update->bind_param(3, $row->{file_id});
     $sth_update->execute() or die $sth_update->errstr;
   }
