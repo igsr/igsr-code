@@ -5,7 +5,13 @@
         "properties": {
             "biosampleId": {
                 "type": "string",
-                "index": "not_analyzed"
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "string",
+                    "analyzer": "standard"
+                  }
+                }
             }, 
             "dataCollections": {
                 "properties": {
@@ -20,7 +26,13 @@
                     }, 
                     "title": {
                         "type": "string",
-                        "index": "not_analyzed"
+                        "index": "not_analyzed",
+                        "fields": {
+                          "std": {
+                            "type": "string",
+                            "analyzer": "standard"
+                          }
+                        }
                     }, 
                     "dataTypes": {
                         "type": "string",
@@ -45,20 +57,44 @@
             }, 
             "name": {
                 "type": "string",
-                "index": "not_analyzed"
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "string",
+                    "analyzer": "standard"
+                  }
+                }
             }, 
             "population": {
                 "properties": {
                     "code": {
                         "type": "string",
-                        "index": "not_analyzed"
+                        "index": "not_analyzed",
+                        "fields": {
+                          "std": {
+                            "type": "string",
+                            "analyzer": "standard"
+                          }
+                        }
                     }, 
                     "description": {
-                        "type": "string"
+                        "type": "string",
+                        "fields": {
+                          "std": {
+                            "type": "string",
+                            "analyzer": "standard"
+                          }
+                        }
                     }, 
                     "name": {
                         "type": "string",
-                        "index": "not_analyzed"
+                        "index": "not_analyzed",
+                        "fields": {
+                          "std": {
+                            "type": "string",
+                            "analyzer": "standard"
+                          }
+                        }
                     }
                 }
             }, 
@@ -82,11 +118,23 @@
                 "properties": {
                     "code": {
                         "type": "string",
-                        "index": "not_analyzed"
+                        "index": "not_analyzed",
+                        "fields": {
+                          "std": {
+                            "type": "string",
+                            "analyzer": "standard"
+                          }
+                        }
                     }, 
                     "name": {
                         "type": "string",
-                        "index": "not_analyzed"
+                        "index": "not_analyzed",
+                        "fields": {
+                          "std": {
+                            "type": "string",
+                            "analyzer": "standard"
+                          }
+                        }
                     }
                 }
             }

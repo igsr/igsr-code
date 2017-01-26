@@ -5,11 +5,23 @@
         "properties": {
             "analysisGroup": {
                 "type": "string",
-                "index": "not_analyzed"
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "string",
+                    "analyzer": "standard"
+                  }
+                }
             }, 
             "dataCollections": {
                 "type": "string",
-                "index": "not_analyzed"
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "string",
+                    "analyzer": "standard"
+                  }
+                }
             }, 
             "dataReusePolicy": {
                 "type": "string",
@@ -17,7 +29,13 @@
             }, 
             "dataType": {
                 "type": "string",
-                "index": "not_analyzed"
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "string",
+                    "analyzer": "standard"
+                  }
+                }
             }, 
             "md5": {
                 "type": "string",
@@ -25,15 +43,33 @@
             }, 
             "samples": {
                 "type": "string",
-                "index": "not_analyzed"
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "string",
+                    "analyzer": "standard"
+                  }
+                }
             }, 
             "populations": {
                 "type": "string",
-                "index": "not_analyzed"
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "string",
+                    "analyzer": "standard"
+                  }
+                }
             }, 
             "url": {
                 "type": "string",
-                "index": "not_analyzed"
+                "index": "not_analyzed",
+                "fields": {
+                  "keywords": {
+                    "type": "string",
+                    "analyzer": "ftp_url"
+                  }
+                }
             }
         }
     }

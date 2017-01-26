@@ -5,11 +5,23 @@
         "properties": {
             "title": {
                 "type": "string",
-                "index": "not_analyzed"
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "string",
+                    "analyzer": "standard"
+                  }
+                }
             }, 
             "shortTitle": {
                 "type": "string",
-                "index": "not_analyzed"
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "string",
+                    "analyzer": "standard"
+                  }
+                }
             }, 
             "dataReusePolicy": {
                 "type": "string",
