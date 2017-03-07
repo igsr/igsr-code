@@ -114,3 +114,40 @@ while (my $es_doc = $scroll->next) {
     id => $es_doc->{_id},
   );
 }
+
+=pod
+
+=head1 NAME
+
+igsr-code/scripts/elasticsearch/load_samples.es.pl
+
+=head1 SYNONPSIS
+
+This script is for creating the sample index in elasticsearch. Run this script whenever you want to add, delete or modify samples in the portal.
+
+The script roughly does this:
+
+    1. Selects all rows in the mysql sample table.
+    2. Works out which population, analysis_groups, data_types, data_collections are connected to the sample via the sample_file, file, and file_data_collection tables.
+    3. Index all of those samples in elasticsearch
+    4. Scans through all existing samples in elasticsearch. If it finds one that should not be there, then deletes it.
+
+=head1 WHAT'S IN THE INDEX?
+
+  # list them (10 only by default):
+  curl http://www.internationalgenome.org/api/beta/sample/_search | python -m json.tool
+  # pick one out by name:
+  curl http://www.internationalgenome.org/api/beta/sample/NA12878 | python -m json.tool
+
+=head1 OPTIONS
+
+    -dbhost, the name of the mysql-host
+    -dbname, the name of the mysql database
+    -dbuser, the name of the mysql user
+    -dbpass, the database password if appropriate
+    -dbport, the port the mysql instance is running on
+    -es_host, host and port of the elasticsearch index you are loading into, e.g. ves-hx-e3:9200
+    -es_index_name, the elasticsearch index name, e.g. igsr_beta
+
+=cut
+

@@ -100,3 +100,40 @@ while (my $es_doc = $scroll->next) {
     id => $es_doc->{_id},
   );
 }
+
+=pod
+
+=head1 NAME
+
+igsr-code/scripts/elasticsearch/load_populations.es.pl
+
+=head1 SYNONPSIS
+
+This script is for creating the population index in elasticsearch. Run this script whenever you want to add, delete or modify populations in the portal.
+
+The script roughly does this:
+
+    Selects all rows in the mysql population table.
+    Works out which samples, analysis_groups, data_types, data_collections are connected to the population via the sample, sample_file, file, and file_data_collection tables.
+    Index all of those populations in elasticsearch
+    Scans through all existing populations in elasticsearch. If it finds one that should not be there, then deletes it.
+
+=head1 WHAT'S IN THE INDEX?
+
+  # list them (10 only by default):
+  curl http://www.internationalgenome.org/api/beta/population/_search | python -m json.tool
+  # pick one out by name:
+  curl http://www.internationalgenome.org/api/beta/population/GWD | python -m json.tool
+
+=head1 OPTIONS
+
+    -dbhost, the name of the mysql-host
+    -dbname, the name of the mysql database
+    -dbuser, the name of the mysql user
+    -dbpass, the database password if appropriate
+    -dbport, the port the mysql instance is running on
+    -es_host, host and port of the elasticsearch index you are loading into, e.g. ves-hx-e3:9200
+    -es_index_name, the elasticsearch index name, e.g. igsr_beta
+
+=cut
+

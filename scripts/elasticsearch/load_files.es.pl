@@ -142,3 +142,42 @@ if ($current_tree_log_id) {
     $sth_log->bind_param(1, $current_tree_log_id);
     $sth_log->execute() or die $sth_log->errstr;
 }
+
+=pod
+
+=head1 NAME
+
+igsr-code/scripts/elasticsearch/load_files.es.pl
+
+=head1 SYNONPSIS
+
+The script roughly does this:
+
+    1. Tweaks some elasticsearch settings for faster indexing (refresh_interval and number_of_replicas).
+    2. Looks at the mysql current_tree_log table to find out wheter the most recent current_tree is already loaded into elasticsearch. Exits early if it is is already loaded and if the --check_timestamp flag is set.
+    3. Selects files from the file table that should be indexed (foreign_file=0 or in_current_tree=1) but are not yet indexed (indexed_in_elasticsearch=0). * Selects samples and populations linked to the file via the sample_file table * Selects data collections linked to the file via the file_data_collection table * Index the new file in elasticsearch
+    4. Selects files from the file table that should be removed: indexed_in_elasticsearch=1 but foreign_file=0 and in_current_tree=0 * Deletes those files from elasticsearch
+    5. Sets the indexed_in_elasticsearch flag to 1 for all files that have foreign_file=1 or in_current_tree=1
+    6. Puts the elasticsearch settings back to their original values (refresh_interval and number_of_replicas).
+
+Note - this script does not scroll through elasticsearch to find indexed files that should not be in there. This is because there are too many files, so this would be a very long process. This is why you must not delete rows from the mysql file table. It is important that the scripts can trust the indexed_in_elasticsearch to indicate what is currently in the index.
+
+
+=head1 WHAT'S IN THE INDEX?
+
+  # list them (10 only by default):
+  curl http://www.internationalgenome.org/api/beta/file/_search | python -m json.tool
+
+=head1 OPTIONS
+
+    -dbhost, the name of the mysql-host
+    -dbname, the name of the mysql database
+    -dbuser, the name of the mysql user
+    -dbpass, the database password if appropriate
+    -dbport, the port the mysql instance is running on
+    -es_host, host and port of the elasticsearch index you are loading into, e.g. ves-hx-e3:9200
+    -es_index_name, the elasticsearch index name, e.g. igsr_beta
+    --check_timestamp, boolean flag. This is for the cron job to exit early if the current tree has not changed recently. If you are running this script manually, then you probably do not need the --check_timestamp flag.
+
+=cut
+

@@ -96,3 +96,34 @@ sub insert_relationship {
   print STDERR "skipping relationship between unknown samples $subject $relation\n" if $rv !=1;
   $inserted_relationships{$subject}{$relation} = 1;
 }
+
+=pod
+
+=head1 NAME
+
+igsr-code/scripts/elasticsearch/populate_sample_relationships.mysql.pl
+
+=head1 SYNONPSIS
+
+This is how the sample_relationship table was originally populated. This script was written because the best source of sample-relationship information (in April 2016) was the ped file /nfs/1000g-archive/vol1/ftp/release/20130502/integrated_call_samples_v2.20130502.ALL.ped
+
+This is what the script does:
+
+    * For each line in the ped file...
+        * For each sample relationship recorded in one of the columns...
+            * Insert a new row into the sample_relationship table.
+            * On duplicate key, it updates the row in the sample_relationship table.
+
+
+=head1 OPTIONS
+
+    -dbhost, the name of the mysql-host
+    -dbname, the name of the mysql database
+    -dbuser, the name of the mysql user
+    -dbpass, the database password if appropriate
+    -dbport, the port the mysql instance is running on
+    -es_host, host and port of the elasticsearch index you are loading into, e.g. ves-hx-e3:9200
+    -es_index_name, the elasticsearch index name, e.g. igsr_beta
+
+=cut
+

@@ -135,3 +135,39 @@ $sth_log->bind_param(1, $mtime);
 $sth_log->execute() or die $sth_log->errstr;
 
 $dbh->commit;
+
+=pod
+
+=head1 NAME
+
+igsr-code/scripts/elasticsearch/load_current_tree.mysql.pl
+
+=head1 SYNONPSIS
+
+This script gets run every night by a cron job. Here is what it does:
+
+    Gets the current_tree file, either by FTP if running in Hinxton (default) or by opening the file directly if in Hemel.
+    Uses unix timestamp to find out when the current_tree was last modified. Compares to the database current_tree_log table to work out if the file has changed since the script last run. Exits early if file is unchanged and if the --check_timestamp flag is set.
+    Sets in_current_tree=0 for all files in the mysql file table
+    For each file in current tree, checks if it is already in the file table of mysql database:
+        Inserts a new row if the file was missing, setting in_current_tree=1
+        Updates the md5 and sets in_current_tree=1 if the file is already in the table.
+
+=head1 OPTIONS
+
+    -dbhost, the name of the mysql-host
+    -dbname, the name of the mysql database
+    -dbuser, the name of the mysql user
+    -dbpass, the database password if appropriate
+    -dbport, the port the mysql instance is running on
+    -es_host, host and port of the elasticsearch index you are loading into, e.g. ves-hx-e3:9200
+    -es_index_name, the elasticsearch index name, e.g. igsr_beta
+    --current_tree=/nfs/1000g-archive/vol1/ftp/current.tree where the file lives. Set by default. Only used if running the script in Hemel.
+    --ftp_current_tree=/vol1/ftp/current.tree where the file lives on the FTP site. Set by default. Only used if running the script in Hinxton.
+    --ftphost=ftp.1000genomes.ebi.ac.uk. Connection details, set by default.
+    --root=ftp://ftp.1000genomes.ebi.ac.uk/vol1/ - set by default. This is how the url should be named when the file goes into the portal.
+    --check_timestamp - a boolean flag. Not set by default. The script will exit early if this is set if the current tree has not changed since the script was last run.
+    --ftp - boolean flag. Set to true by default. Tells the script that you are in Hinxton, so connect by FTP. Set to --noftp to cancel it (if you are in Hemel).
+
+=cut
+

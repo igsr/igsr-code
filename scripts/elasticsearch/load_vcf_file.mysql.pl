@@ -86,3 +86,41 @@ foreach my $vcf (grep {$_} @vcf_file) {
   }
 }
 $dbh->commit;
+
+=pod
+
+=head1 NAME
+
+igsr-code/scripts/elasticsearch/load_vcf_file.mysql.pl
+
+=head1 SYNONPSIS
+
+This is another way of loading the file table. This script should be used for "final" vcf files - i.e. the ones you want to be advertised on the data portal as belonging to samples, and data collections. Take a look at the bash script shell/load_vcf_files.mysql.sh in the igsr-code git repo. It contains a record of the exact command lines that were used to call the perl script when the database was first loaded in April 2016. This bash script is helpful to demostrate how command lines could be constructed.
+
+    For each vcf file passed in on the command line, it does the following for the vcf file and for the .tbi file
+        1. Read the vcf header to get a list of samples.
+        2. Inserts the file into file table, and check for duplicate_key on the url column
+        3. If there was a duplicate_key, then the file was already in the file table. So it sets indexed_indexed_elasticsearch=0 to mark that you are modifying this file.
+        4. Updates the analysis_group_id in the file table if you used the --analysis_group arguments
+        5. Updates the data_type_id in the file table if you used the --data_type argument
+        6. Inserts a row in the file_data_collection table if you used the --data_collection argument
+        7. Inserts a row in the sample_file table for each sample in the header. Ignores duplicate key errors.
+
+=head1 OPTIONS
+
+    -dbhost, the name of the mysql-host
+    -dbname, the name of the mysql database
+    -dbuser, the name of the mysql user
+    -dbpass, the database password if appropriate
+    -dbport, the port the mysql instance is running on
+    -es_host, host and port of the elasticsearch index you are loading into, e.g. ves-hx-e3:9200
+    -es_index_name, the elasticsearch index name, e.g. igsr_beta
+    --file=/path/to/file.vcf.gz the vcf file you want to load. Can be specified many times and it will load all of them.
+    --data_collection=grc38 optional, must match the code column of the data_collection table.
+    --data_type=variants. must match the code column of the data_type table.
+    --analysis_group=exome. must match the code column of the analysis_group table.
+    --trim=/nfs/1000g-archive/ this is already set as a default. This is trimmed from the file path before converting it into a url.
+    --root=ftp://ftp.1000genomes.ebi.ac.uk/. This is already set by default. It is prepended to the file path to turn it into a url.
+
+=cut
+

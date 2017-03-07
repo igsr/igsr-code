@@ -50,3 +50,23 @@ while( my $line = $sample_fh->read) {
 }
   
 $sample_fh->close();
+
+=pod
+
+=head1 NAME
+
+igsr-code/scripts/elasticsearch/populate_samples.mysql.pl
+
+=head1 SYNONPSIS
+
+This is how samples originally entered the mysql database. This script was written because the best source of sample information (in April 2016) was the text-delimited file /nfs/1000g-archive/vol1/ftp/technical/working/20130606_sample_info/20130606_sample_info.txt
+
+This is what the script does:
+
+    Fetches the biosamples group SAMEG305842 using the xml API. This is to find the biosamples id of each sample.
+    For each sample in the file, create a new row in the sample table. On duplicate keys, it updates the row in the sample table.
+
+This script should probably never be used again for loading samples. New data collections to IGSR will have different sources of information. At best, this script could be a template for what a sample-loading script might look like.
+
+=cut
+

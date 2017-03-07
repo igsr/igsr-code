@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# This shell script contains a record of the exact command lines that were used
+# to call the perl script when the database was first loaded in April 2016.
+# This script is helpful to demonstrate how command lines could be constructed.
+
 ES_SCRIPTS=`dirname $0`/../scripts/elasticsearch
 
 perl $ES_SCRIPTS/load_vcf_file.mysql.pl \

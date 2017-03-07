@@ -70,3 +70,39 @@ while (my $es_doc = $scroll->next) {
     id => $es_doc->{_id},
   );
 }
+
+=pod
+
+=head1 NAME
+
+igsr-code/scripts/elasticsearch/load_analysis_groups.es.pl
+
+=head1 SYNONPSIS
+
+This script is for creating the analysis-group index in elasticsearch. Run this script whenever you want to add, delete or modify analysis-groups in the portal.
+
+The script roughly does this:
+
+    Selects all rows in the mysql analysis_group table. (It ignore a row if it is not connected to a sample via the sample_file and file tables)
+    Index all of those analysis groups in elasticsearch
+    Scans through all existing analysis groups in elasticsearch. If it finds one that should not be there, then deletes it.
+
+=head1 WHAT'S IN THE INDEX?
+
+  # list them (10 only by default):
+  curl http://www.internationalgenome.org/api/beta/analysis-group/_search | python -m json.tool
+  # pick one out by name:
+  curl http://www.internationalgenome.org/api/beta/analysis-group/low-cov-wgs | python -m json.tool
+
+=head1 OPTIONS
+
+    -dbhost, the name of the mysql-host
+    -dbname, the name of the mysql database
+    -dbuser, the name of the mysql user
+    -dbpass, the database password if appropriate
+    -dbport, the port the mysql instance is running on
+    -es_host, host and port of the elasticsearch index you are loading into, e.g. ves-hx-e3:9200
+    -es_index_name, the elasticsearch index name, e.g. igsr_beta
+
+=cut
+
