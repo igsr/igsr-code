@@ -139,7 +139,7 @@ while (my $line = <$fh>) {
 
     my $sample = defined $i_sample ? $split_line[$i_sample] : undef;
     if (!$sample && $infer_sample) {
-      ($sample) = $url =~ m{/data/(?:[A-Z]{3}/)?([^\./]+)/};
+      ($sample) = $url =~ m{/data/(?:[A-Z]+/)?([^\./]+)/};
     }
     if ($sample) {
       $sth_sample->bind_param(1, $file_id);
