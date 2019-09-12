@@ -6,7 +6,7 @@ use Getopt::Long;
 use Search::Elasticsearch;
 use DBI;
 
-my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1kro', 4197, undef);
+my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website_v2', 'mysql-igsr-web', 'g1kro', 4641, undef);
 my $es_host = 'ves-hx-e4:9200';
 my $es_index_name = 'igsr_beta';
 
@@ -24,17 +24,19 @@ my $es = Search::Elasticsearch->new(nodes => $es_host, client => '1_0::Direct');
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
 my $select_all_dcs_sql = 'SELECT * from data_collection';
 my $count_samples_sql = 'SELECT count(samples.sample_id) AS num_samples FROM (SELECT DISTINCT sf.sample_id FROM sample_file sf, file_data_collection fdc WHERE sf.file_id=fdc.file_id AND fdc.data_collection_id=?) AS samples';
-my $count_pops_sql = 'SELECT count(*) AS num_populations FROM (SELECT DISTINCT s.population_id FROM sample_file sf, file_data_collection fdc, sample s WHERE s.sample_id=sf.sample_id AND sf.file_id=fdc.file_id AND fdc.data_collection_id=?) AS populations';
+my $count_pops_sql = 'SELECT count(*) AS num_populations FROM (SELECT DISTINCT dcsp.population_id FROM sample_file sf, file_data_collection fdc, sample s, dc_sample_pop_assign dcsp  WHERE dcsp.data_collection_id = fdc.data_collection_id AND dcsp.sample_id = s.sample_id AND s.sample_id=sf.sample_id AND sf.file_id=fdc.file_id AND fdc.data_collection_id=?) AS populations';
 my $select_files_sql = 'SELECT dt.code data_type, ag.description analysis_group
     FROM file f LEFT JOIN data_type dt ON f.data_type_id = dt.data_type_id
     LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id
     INNER JOIN file_data_collection fdc ON f.file_id=fdc.file_id
     WHERE fdc.data_collection_id=?
     GROUP BY dt.data_type_id, ag.analysis_group_id';
+my $select_publications_sql = 'select * from publications where data_collection_id=? and publication is NOT NULL';
 my $sth_dcs = $dbh->prepare($select_all_dcs_sql) or die $dbh->errstr;
 my $sth_samples = $dbh->prepare($count_samples_sql) or die $dbh->errstr;
 my $sth_pops = $dbh->prepare($count_pops_sql) or die $dbh->errstr;
 my $sth_files = $dbh->prepare($select_files_sql) or die $dbh->errstr;
+my $sth_pubs = $dbh->prepare($select_publications_sql) or die $dbh->errstr;
 
 $sth_dcs->execute() or die $sth_dcs->errstr;
 my %indexed_dcs;
@@ -48,9 +50,12 @@ while (my $row = $sth_dcs->fetchrow_hashref()) {
   if ($row->{website}) {
     $es_doc{website} = $row->{website};
   }
-  if ($row->{publication}) {
-    $es_doc{publication} = $row->{publication};
-  }
+
+	$sth_pubs->bind_param(1, $row->{data_collection_id});
+  $sth_pubs->execute() or die $sth_pubs->errstr;
+	while(my $pub_row = $sth_pubs->fetchrow_hashref()) {
+		push(@{$es_doc{publications}}, {displayOrder => $pub_row->{display_order}, url => $pub_row->{publication}, name => $pub_row->{name}});
+	}
 
   my $es_id = lc($row->{short_title});
   $es_id =~ s/ /-/g;

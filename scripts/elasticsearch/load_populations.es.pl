@@ -5,8 +5,10 @@ use warnings;
 use Getopt::Long;
 use Search::Elasticsearch;
 use DBI;
+use Data::Dumper;
 
-my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1kro', 4197, undef);
+
+my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website_v2', 'mysql-igsr-web', 'g1kro', 4641, undef);
 my $es_host = 'ves-hx-e4:9200';
 my $es_index_name = 'igsr_beta';
 
@@ -22,39 +24,66 @@ my $es_index_name = 'igsr_beta';
 my $es = Search::Elasticsearch->new(nodes => $es_host, client => '1_0::Direct');
 
 my $dbh = DBI->connect("DBI:mysql:$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass) or die $DBI::errstr;
-my $select_all_pops_sql = 'SELECT p.*, count(s.sample_id) num_samples, sp.code superpop_code, sp.name superpop_name
-    FROM population p
-    LEFT JOIN sample s on p.population_id=s.population_id
-    INNER JOIN superpopulation sp on p.superpopulation_id=sp.superpopulation_id
-    GROUP BY p.population_id';
-my $select_files_sql = 'SELECT dt.code data_type, ag.description analysis_group, dc.title data_collection, dc.data_collection_id, dc.reuse_policy
-    FROM file f LEFT JOIN data_type dt ON f.data_type_id = dt.data_type_id
-    LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id
-    INNER JOIN sample_file sf ON sf.file_id=f.file_id
-    INNER JOIN file_data_collection fdc ON f.file_id=fdc.file_id
-    INNER JOIN data_collection dc ON fdc.data_collection_id=dc.data_collection_id
-    INNER JOIN sample s ON sf.sample_id=s.sample_id
-    WHERE s.population_id=?
-    GROUP BY dt.data_type_id, ag.analysis_group_id, dc.data_collection_id';
+#my $select_all_pops_sql = 'SELECT p.*, count(s.sample_id) num_samples, sp.code superpop_code, sp.name superpop_name, sp.display_colour superpop_display_colour, sp.display_order superpop_display_order
+#    FROM population p
+#    LEFT JOIN sample s on p.population_id=s.population_id
+#    INNER JOIN superpopulation sp on p.superpopulation_id=sp.superpopulation_id
+#    GROUP BY p.population_id';
+my $select_all_pops_sql = 'select p.*, count(distinct sample_id) num_samples, sp.code superpop_code, sp.name superpop_name, sp.display_colour superpop_display_colour, sp.display_order superpop_display_order from population p, superpopulation sp, dc_sample_pop_assign dcsp where p.superpopulation_id = sp.superpopulation_id and p.population_id=dcsp.population_id group by p.population_id';
+
+#my $select_files_sql = 'SELECT dt.code data_type, ag.description analysis_group, dc.title data_collection, dc.data_collection_id, dc.reuse_policy
+#    FROM file f LEFT JOIN data_type dt ON f.data_type_id = dt.data_type_id
+#    LEFT JOIN analysis_group ag ON f.analysis_group_id = ag.analysis_group_id
+#    INNER JOIN sample_file sf ON sf.file_id=f.file_id
+#    INNER JOIN file_data_collection fdc ON f.file_id=fdc.file_id
+#    INNER JOIN data_collection dc ON fdc.data_collection_id=dc.data_collection_id
+#    INNER JOIN sample s ON sf.sample_id=s.sample_id
+#    WHERE s.population_id=?
+#    GROUP BY dt.data_type_id, ag.analysis_group_id, dc.data_collection_id';
+
+my $select_files_sql = 'SELECT dt.code data_type, ag.description analysis_group, dc.title data_collection, dc.data_collection_id, dc.reuse_policy FROM population p, dc_sample_pop_assign dspa, sample_file sf, file f, analysis_group ag, data_type dt, file_data_collection fdc, data_collection dc WHERE p.population_id=? and p.population_id=dspa.population_id and dspa.sample_id=sf.sample_id and sf.file_id=f.file_id and f.analysis_group_id=ag.analysis_group_id and f.data_type_id=dt.data_type_id and f.file_id=fdc.file_id and fdc.data_collection_id=dc.data_collection_id and dspa.data_collection_id=dc.data_collection_id GROUP BY dt.data_type_id, ag.analysis_group_id, dc.data_collection_id';
+
+my $select_overlap_pops = 'select population_id pop_id, description pop_desc, elastic_id pop_elastic_id, count(*) sample_count from (select distinct population.population_id, population.description, population.elastic_id, sample.name from (select sample_id, population_id from dc_sample_pop_assign where population_id = ?) as t1, dc_sample_pop_assign, population, sample where t1.sample_id = dc_sample_pop_assign.sample_id and dc_sample_pop_assign.population_id != t1.population_id and dc_sample_pop_assign.population_id=population.population_id and dc_sample_pop_assign.sample_id=sample.sample_id order by description) as t3 group by description';
+
+my $select_overlap_pop_samples = 'select distinct sample.sample_id s_id, sample.name s_name from (select sample_id si from dc_sample_pop_assign where population_id = ?) as t1, dc_sample_pop_assign, sample where dc_sample_pop_assign.sample_id = t1.si and dc_sample_pop_assign.population_id=? and dc_sample_pop_assign.sample_id=sample.sample_id';
+
+#'select distinct population.population_id pop_id, population.description pop_desc, sample.sample_id s_id, sample.name s_name from (select sample_id, population_id from dc_sample_pop_assign where population_id = ?) as t1, dc_sample_pop_assign, population, sample where t1.sample_id = dc_sample_pop_assign.sample_id and dc_sample_pop_assign.population_id != t1.population_id and dc_sample_pop_assign.population_id=population.population_id and dc_sample_pop_assign.sample_id=sample.sample_id order by description;';
+    
 my $sth_population = $dbh->prepare($select_all_pops_sql) or die $dbh->errstr;
 my $sth_files = $dbh->prepare($select_files_sql) or die $dbh->errstr;
+my $sth_overlaps = $dbh->prepare($select_overlap_pops) or die $dbh->errstr;
+my $sth_samples = $dbh->prepare($select_overlap_pop_samples) or die $dbh->errstr;
 
 $sth_population->execute() or die $sth_population->errstr;
 my %indexed_pops;
-FILE:
+
+my $pop_counter = 0;
+
+#Looping through the populations returned by population SQL
+POPS:
 while (my $row = $sth_population->fetchrow_hashref()) {
+
   my %es_doc = (
     code => $row->{code},
+		elasticId => $row->{elastic_id},
     name => $row->{name},
     description => $row->{description},
+		display_order => $row->{display_order},
+    latitude => $row->{latitude},
+    longitude => $row->{longitude},
     superpopulation => {
       code => $row->{superpop_code},
       name => $row->{superpop_name},
+			display_colour => $row->{superpop_display_colour},
+      display_order => $row->{superpop_display_order},
     },
     samples => {
       count => $row->{num_samples},
     },
   );
+
+	$pop_counter++;
+	print "processing pops: $row->{elastic_id} pop $pop_counter\n";
 
   $sth_files->bind_param(1, $row->{population_id});
   $sth_files->execute() or die $sth_files->errstr;
@@ -73,16 +102,46 @@ while (my $row = $sth_population->fetchrow_hashref()) {
     push(@{$es_doc{dataCollections}}, $dc_hash);
   }
 
+	$sth_overlaps->bind_param(1, $row->{population_id});
+	$sth_overlaps->execute() or die $sth_overlaps->errstr;
+	my %overlapping_pops;
+	while (my $overlap_row = $sth_overlaps->fetchrow_hashref()) {
+
+		#for each overlapping population, get the samples that are shared
+		$sth_samples->bind_param(1, $row->{population_id});
+		$sth_samples->bind_param(2, $overlap_row->{pop_id});
+		$sth_samples->execute() or die $sth_samples->errstr;
+
+		#create the structure for the overlapping population
+		$overlapping_pops{$overlap_row->{pop_id}} //= {
+			populationDescription => $overlap_row->{pop_desc},
+			populationElasticId => $overlap_row->{pop_elastic_id},
+			sharedSampleCount => $overlap_row->{sample_count},
+		};
+		#add the list of shared samples
+		my @samples;
+		while (my $sample_row = $sth_samples->fetchrow_hashref()) {
+			push(@samples, $sample_row->{s_name});
+		}
+		$overlapping_pops{$overlap_row->{pop_id}}{sharedSamples} = [@samples];
+	}
+	foreach my $overlap_pop_id (sort keys %overlapping_pops){
+		my $op_hash = $overlapping_pops{$overlap_pop_id};
+		push(@{$es_doc{overlappingPopulations}}, $op_hash);
+	}
+
+	#print Dumper(%es_doc);
+
   eval{$es->index(
     index => $es_index_name,
     type => 'population',
-    id => $row->{code},
+    id => $row->{elastic_id},
     body => \%es_doc,
   );};
   if (my $error = $@) {
     die "error indexing population in $es_index_name index:".$error->{text};
   }
-  $indexed_pops{$row->{code}} = 1;
+  $indexed_pops{$row->{elastic_id}} = 1;
 }
 
 my $scroll = $es->scroll_helper(

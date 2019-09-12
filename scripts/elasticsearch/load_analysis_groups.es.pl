@@ -6,7 +6,7 @@ use Getopt::Long;
 use Search::Elasticsearch;
 use DBI;
 
-my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1kro', 4197, undef);
+my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website_v2', 'mysql-igsr-web', 'g1kro', 4641, undef);
 my $es_host = 'ves-hx-e4:9200';
 my $es_index_name = 'igsr_beta';
 
@@ -35,6 +35,7 @@ while (my $row = $sth_ags->fetchrow_hashref()) {
     title => $row->{description},
     shortTitle => $row->{short_title},
     displayOrder => $row->{table_display_order},
+		longDescription => $row->{long_description},
   );
   if ($row->{table_display_order}) {
     $es_doc{displayOrder} = $row->{table_display_order};

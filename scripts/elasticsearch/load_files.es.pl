@@ -6,7 +6,7 @@ use Getopt::Long;
 use Search::Elasticsearch;
 use DBI;
 
-my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
+my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website_v2', 'mysql-igsr-web', 'g1krw', 4641, undef);
 my $check_timestamp;
 my $es_index_name = 'igsr_beta';
 my $es_host = 'ves-hx-e4';
@@ -33,10 +33,12 @@ my $select_new_files_sql = 'SELECT f.file_id, f.url, f.md5, dt.code data_type, a
 my $select_old_files_sql = 'SELECT f.file_id FROM file f
     WHERE f.foreign_file IS NOT TRUE AND f.in_current_tree IS NOT TRUE AND f.indexed_in_elasticsearch IS TRUE
     ORDER BY file_id';
-my $select_sample_sql = 'SELECT s.name, p.code AS pop_code from sample s
-    INNER JOIN sample_file sf ON sf.sample_id=s.sample_id 
-    LEFT JOIN population p ON p.population_id=s.population_id
-    WHERE sf.file_id=?';
+#my $select_sample_sql = 'SELECT s.name, p.code AS pop_code from sample s
+#    INNER JOIN sample_file sf ON sf.sample_id=s.sample_id 
+#    LEFT JOIN population p ON p.population_id=s.population_id
+#    WHERE sf.file_id=?';
+my $select_sample_sql = 'select distinct sample.name, population.description AS pop_description from file_data_collection, sample_file, sample, dc_sample_pop_assign, population where file_data_collection.file_id=? and sample_file.file_id = file_data_collection.file_id  and sample_file.sample_id = sample.sample_id and sample.sample_id=dc_sample_pop_assign.sample_id and file_data_collection.data_collection_id = dc_sample_pop_assign.data_collection_id and dc_sample_pop_assign.population_id =population.population_id';
+
 my $select_data_collection_sql = 'SELECT dc.title, dc.reuse_policy from data_collection dc, file_data_collection fdc
     WHERE fdc.data_collection_id=dc.data_collection_id AND fdc.file_id=?
     ORDER BY dc.reuse_policy_precedence';
@@ -88,8 +90,8 @@ while (my $row_file = $sth_new_files->fetchrow_hashref()) {
   my %file_populations;
   while (my $row = $sth_sample->fetchrow_hashref()) {
     push(@{$es_doc{samples}}, $row->{name});
-    if ($row->{pop_code}) {
-      $file_populations{$row->{pop_code}} = 1;
+    if ($row->{pop_description}) {
+      $file_populations{$row->{pop_description}} = 1;
     }
   }
   if (scalar keys %file_populations) {
