@@ -12,7 +12,17 @@
                     "analyzer": "standard"
                   }
                 }
-            }, 
+            },
+						"elasticId": {
+                "type": "string",
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "string",
+                    "analyzer": "standard"
+                  }
+                }
+						}, 
             "dataCollections": {
                 "properties": {
                     "alignment": {
@@ -73,7 +83,37 @@
                     "analyzer": "standard"
                   }
                 }
-            }, 
+            },
+            "display_order": {
+                "type": "integer",
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "integer",
+                    "analyzer": "standard"
+                  }
+                }
+            },
+            "latitude": {
+                "type": "string",
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "string",
+                    "analyzer": "standard"
+                  }
+                }
+            },
+            "longitude": {
+                "type": "string",
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "string",
+                    "analyzer": "standard"
+                  } 
+                }  
+            },
             "superpopulation": {
                 "properties": {
                     "code": {
@@ -95,6 +135,26 @@
                             "analyzer": "standard"
                           }
                         }
+                    },
+                    "display_colour": {
+                        "type": "string",
+                        "index": "not_analyzed",
+                        "fields": {
+                          "std": {
+                            "type": "string",
+                            "analyzer": "standard"
+                          }
+                        }
+                    },
+                    "display_order": {
+                        "type": "integer",
+                        "index": "not_analyzed",
+                        "fields": {
+                          "std": {
+                            "type": "integer",
+                            "analyzer": "standard"
+                          }
+                        }
                     }
                 }
             },
@@ -104,7 +164,26 @@
                         "type": "short"
                     } 
                 }
-            }
+            },
+						"overlappingPopulations": {
+							"properties": {
+								"populationDescription": {
+									"type": "string",
+									"index": "not_analyzed"
+								},
+								"populationElasticId": {
+									"type": "string",
+                  "index": "not_analyzed"
+								},
+								"sharedSampleCount": {
+									"type": "short"
+								},
+								"sharedSamples": {
+									"type": "string",
+									"index": "not_analyzed"
+								}
+							}
+						}
         }
     }
 }
