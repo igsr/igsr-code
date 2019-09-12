@@ -8,7 +8,7 @@ use Net::FTP;
 use IO::Pipe;
 use DBI;
 
-my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
+my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website_v2', 'mysql-igsr-web', 'g1krw', 4641, undef);
 my $current_tree = '/nfs/1000g-archive/vol1/ftp/current.tree';
 my $ftp_current_tree = '/vol1/ftp/current.tree';
 my $ftp_host= 'ftp.1000genomes.ebi.ac.uk';

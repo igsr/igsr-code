@@ -8,7 +8,7 @@ use DBI;
 use List::Util qw();
 
 my $sample_ped = '/nfs/1000g-archive/vol1/ftp/release/20130502/integrated_call_samples_v2.20130502.ALL.ped';
-my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
+my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website_v2', 'mysql-igsr-web', 'g1krw', 4641, undef);
 
 &GetOptions(
   'sample_ped=s'      => \$sample_ped,

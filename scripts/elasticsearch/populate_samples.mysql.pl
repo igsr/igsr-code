@@ -10,7 +10,7 @@ use List::Util qw();
 
 my $sample_file = '/nfs/1000g-archive/vol1/ftp/technical/working/20130606_sample_info/20130606_sample_info.txt';
 my $biosample_group = 'SAMEG305842';
-my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
+my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website_v2', 'mysql-igsr-web', 'g1krw', 4641, undef);
 
 &GetOptions(
   'sample_file=s'      => \$sample_file,

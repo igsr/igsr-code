@@ -10,7 +10,7 @@ my @vcf_file;
 my $data_collection = '1000genomes';
 my $data_type = 'variants';
 my $analysis_group;
-my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
+my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website_v2', 'mysql-igsr-web', 'g1krw', 4641, undef);
 my $trim = '/nfs/1000g-archive/';
 my $root = 'ftp://ftp.1000genomes.ebi.ac.uk/';
 

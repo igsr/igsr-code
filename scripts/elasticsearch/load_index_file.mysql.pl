@@ -12,7 +12,7 @@ my $analysis_group;
 my ($use_column_headers, $infer_sample, $infer_data_type);
 my (@url_column, @md5_column);
 my ($analysis_group_column, $withdrawn_column, $sample_column);
-my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website', 'mysql-g1kdcc-public', 'g1krw', 4197, undef);
+my ($dbname, $dbhost, $dbuser, $dbport, $dbpass) = ('igsr_website_v2', 'mysql-igsr-web', 'g1krw', 4641, undef);
 my $root = '';
 
 &GetOptions(
