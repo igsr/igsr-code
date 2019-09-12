@@ -1,0 +1,48 @@
+{
+    "superpopulation": {
+        "dynamic": "strict",
+        "_all": {"enabled": false},
+        "properties": {
+            "code": {
+                "type": "string",
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "string",
+                    "analyzer": "standard"
+                  }
+                }
+            }, 
+            "name": {
+                "type": "string",
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "string",
+                    "analyzer": "standard"
+                  }
+                }
+            },
+            "display_colour": {
+                "type": "string",
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "string",
+                    "analyzer": "standard"
+                  }
+                }
+            },
+            "display_order": {
+                "type": "integer",
+                "index": "not_analyzed",
+                "fields": {
+                  "std": {
+                    "type": "integer",
+                    "analyzer": "standard"
+                  } 
+                }  
+            }
+        }
+    }
+}
