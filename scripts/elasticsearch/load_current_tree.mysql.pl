@@ -103,10 +103,10 @@ $sth_reset->execute() or die $sth_reset->errstr;
 
 LINE:
 while (my $line = <$fh>) {
+	chomp $line;
   my @split_line = split("\t", $line);
   next LINE if $split_line[1] ne 'file';
   next LINE if !$split_line[0];
-  chomp $line;
   my $url = $root.$split_line[0];
 
   $sth_select->bind_param(1, $url);
