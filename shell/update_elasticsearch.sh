@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source ~/.bashrc
+
 # This is the cron job that is run every night by user vg_igsr_adm
 
 # Load the most recent current tree into the mysql database.
@@ -23,7 +25,7 @@ perl $GCA_ELASTICSEARCH/scripts/sync_hx_hh.es.pl \
   -to_es_host wp-p1m-a1 \
   -to_es_host wp-p2m-3a \
   -repo igsr_repo \
-  -snap_index igsr \
-  -restore_only igsr
+  -snap_index igsr_beta \
+  -restore_only igsr_beta
 
 echo "Finishing updating the ES index"
